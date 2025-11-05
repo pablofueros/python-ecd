@@ -1,8 +1,6 @@
 <div align="center">
 
-<!-- <img src="https://raw.githubusercontent.com/pablofueros/python-ecd/main/assets/banner.png" alt="python-ecd logo" width="600"/> -->
-
-<img src="assets/banner.png" alt="python-ecd logo" width="600"/>
+<img src="https://raw.githubusercontent.com/pablofueros/python-ecd/main/assets/banner.png" alt="python-ecd logo" width="600"/>
 
 ---
 
