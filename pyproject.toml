@@ -14,3 +14,8 @@ ecd = "python_ecd.cli:app"
 [build-system]
 requires = ["uv_build>=0.9.7,<0.10.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ty>=0.0.1a25",
+]
