@@ -93,7 +93,7 @@ jobs:
         with:
           name: pyproject-toml
       - name: Install uv
-        uses: ./.github/actions/setup
+        uses: astral-sh/setup-uv@v4
       - name: Install dependencies
         run: |
           echo "Installing dependencies via uv..."
@@ -123,7 +123,7 @@ jobs:
           name: dist
           path: dist/
       - name: Install uv
-        uses: ./.github/actions/setup
+        uses: astral-sh/setup-uv@v4
       - name: Publish to PyPI
         run: |
           echo "Publishing package to PyPI..."
