@@ -1,0 +1,178 @@
+import contextlib
+import importlib.util
+import io
+import subprocess
+from pathlib import Path
+
+from ecd import get_inputs
+
+
+def _read_template(template_name: str) -> str:
+    """
+    Read a template file from the templates directory.
+    """
+    templates_dir = Path(__file__).parent / "templates"
+    template_path = templates_dir / template_name
+    text = template_path.read_text(encoding="utf-8")
+    return text
+
+
+def create_base(base_dir_name: str) -> Path:
+    """
+    Create the base directory for the project, including subfolders.
+    """
+    base_dir = Path(base_dir_name).resolve()
+    (base_dir / "events").mkdir(parents=True, exist_ok=True)
+    return base_dir
+
+
+def find_base() -> Path:
+    """
+    Locate the base directory by searching upwards from the current directory.
+    """
+    current_dir = Path.cwd()
+    for parent in [current_dir] + list(current_dir.parents):
+        if (parent / "events").exists():
+            return parent
+    raise FileNotFoundError("Base directory not found. Please run 'ecd init'.")
+
+
+def create_quest_dir(base_dir: Path, year: int, quest: int) -> Path:
+    """
+    Create directory structure for a given quest/year.
+    """
+    quest_dir = base_dir / "events" / str(year) / f"quest_{quest:02d}"
+    quest_dir.mkdir(parents=True, exist_ok=True)
+    (quest_dir / "input").mkdir(exist_ok=True)
+    (quest_dir / "test").mkdir(exist_ok=True)
+    return quest_dir
+
+
+def create_readme(base_dir: Path, force: bool) -> None:
+    """
+    Create a simple README.md in the base directory.
+    """
+    readme_path = base_dir / "README.md"
+    if not readme_path.exists() or force:
+        content = _read_template("README.md.tpl")
+        readme_path.write_text(content, encoding="utf-8")
+
+
+def create_git(base_dir: Path) -> None:
+    """
+    Initialize a git repository in the base directory.
+    """
+    git_dir = base_dir / ".git"
+    if git_dir.exists():
+        return  # Git already initialized
+    subprocess.run(
+        ["git", "init"],
+        cwd=str(base_dir),
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+
+
+def create_gitignore(base_dir: Path) -> None:
+    gitignore_path = base_dir / ".gitignore"
+    if not gitignore_path.exists():
+        content = _read_template(".gitignore.tpl")
+        gitignore_path.write_text(content, encoding="utf-8")
+
+
+def create_solution(quest_dir: Path, force: bool) -> None:
+    """
+    Create a solution.py file in the quest directory.
+    """
+    solution_path = quest_dir / "solution.py"
+    if not solution_path.exists() or force:
+        content = _read_template("solution.py.tpl")
+        solution_path.write_text(content, encoding="utf-8")
+
+
+TOKEN_PATH = Path.home() / ".config" / "ecd" / "token"
+
+
+def set_token(token: str, force: bool = False) -> None:
+    """Create ~/.config/ecd/token with the given token."""
+    config_dir = TOKEN_PATH.parent
+    config_dir.mkdir(parents=True, exist_ok=True)
+    TOKEN_PATH.write_text(token.strip())
+
+
+def get_token() -> str | None:
+    """Read the token if it exists, else return None."""
+    if not TOKEN_PATH.exists():
+        return None
+    return TOKEN_PATH.read_text().strip()
+
+
+def download_input(year: int, quest: int, part: int) -> str:
+    """
+    Fetch the input text for a specific quest and part.
+    Raises if part not available.
+    """
+
+    with contextlib.redirect_stderr(io.StringIO()):
+        data = get_inputs(quest=quest, event=year)
+
+    key = str(part)
+    if key not in data:
+        raise ValueError(f"Part {part} not unlocked or not available.")
+
+    return data[key]
+
+
+def execute_part(
+    base_dir: Path,
+    quest: int,
+    year: int,
+    part: int,
+    mode: str = "input",
+) -> str:
+    """
+    Execute a given part of a quest solution with either input or test data.
+
+    Args:
+        base_dir: Base directory
+        part: Part number (1, 2, or 3)
+        mode: Either "input" or "test"
+
+    Returns:
+        The string result produced by part_{part}(data).
+    """
+
+    quest_dir = base_dir / "events" / str(year) / f"quest_{quest:02d}"
+    solution_path = quest_dir / "solution.py"
+    data_path = quest_dir / mode / f"{mode}_p{part}.txt"
+
+    if not solution_path.exists():
+        raise FileNotFoundError(
+            f"Missing solution file: {solution_path.relative_to(base_dir)}"
+        )
+    if not data_path.exists():
+        raise FileNotFoundError(f"Missing data file: {data_path.relative_to(base_dir)}")
+
+    # Load data
+    data = data_path.read_text(encoding="utf-8")
+
+    # Dynamic import
+    spec = importlib.util.spec_from_file_location("solution", solution_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(
+            f"Could not load module from {solution_path.relative_to(base_dir)}"
+        )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    func_name = f"part_{part}"
+    func = getattr(module, func_name, None)
+    if not callable(func):
+        raise AttributeError(f"No function '{func_name}' defined in solution.py")
+
+    # Run the function
+    result = func(data)
+    if result is None:
+        raise ValueError(f"{func_name} returned None.")
+
+    return str(result)

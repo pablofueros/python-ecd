@@ -1,2 +1,119 @@
-# python-ecd
-Python CLI for Everybody Codes
+<div align="center">
+
+<!-- <img src="https://raw.githubusercontent.com/pablofueros/python-ecd/main/assets/banner.png" alt="python-ecd logo" width="600"/> -->
+
+<img src="assets/banner.png" alt="python-ecd logo" width="600"/>
+
+---
+
+### **✨ A Python CLI tool for managing Everybody Codes puzzles ✨**
+
+---
+
+</div>
+
+## 📋 Features
+
+- Initialize workspace for [Everybody Codes](https://everybody.codes) puzzles
+- Download puzzle inputs automatically
+- Manage session tokens securely
+- Run solutions with both test and real input data
+- Automatic project structure creation
+
+## 📦 Installation
+
+The package can be installed using [uv](https://docs.astral.sh/uv/#installation), which is recommended for better dependency management and faster installations:
+
+```bash
+# Install it as a system tool
+uv tool install python-ecd
+
+# Otherwise use:
+uvx python-ecd
+```
+
+The tool will be available as both 'python-ecd' and 'ecd'
+
+
+## 💻 Usage
+
+### Initialize a Workspace
+
+Create a new workspace for your puzzles solutions:
+
+It can be done in the current directory:
+
+```bash
+ecd init
+```
+
+Or in a specified path:
+
+```bash
+ecd init everybody-codes-solutions
+```
+
+Note that if the directory does not exist, it will be created.
+
+### Set Session Token
+
+Configure your session token for accessing puzzle inputs:
+
+```bash
+ecd set-token <TOKEN>
+```
+
+Note that is not necessary if you set it during initialization.
+
+### Download Puzzle Input
+
+Get the input for a specific puzzle:
+
+```bash
+ecd get <QUEST_NUMBER> [OPTIONS]
+```
+
+Options:
+- `--year`, `-y`: Event year (default: actual)
+- `--part`, `-p`: Puzzle part (default: 1)
+- `--force`, `-f`: Overwrite existing files
+
+### Run Solutions
+
+Execute your solution for a specific puzzle:
+
+```bash
+ecd run <QUEST_NUMBER> [OPTIONS]
+```
+
+Options:
+- `--year`: Event year (default: actual)
+- `--part`: Part number to execute (default: 1)
+
+### Test Solutions
+
+Run your solution using test data:
+
+```bash
+ecd test <QUEST_NUMBER> [OPTIONS]
+```
+
+Options:
+- `--year`: Event year (default: actual)
+- `--part`: Part number to test (default: 1)
+
+### Display Version
+
+Show the current version of the tool:
+
+```bash
+ecd --version
+```
+
+## ©️ License
+
+[MIT License](LICENSE)
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.

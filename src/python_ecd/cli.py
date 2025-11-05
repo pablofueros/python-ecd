@@ -1,0 +1,189 @@
+from datetime import datetime
+
+import typer
+
+from . import utils
+from .version import __version__
+
+app = typer.Typer(name="python-ecd", help="python-ecd: CLI tool for Everybody Codes")
+
+
+def _display_version(value: bool) -> None:
+    """Display the version of the application and exit."""
+    if value:
+        typer.echo(f"python-ecd {__version__}")
+        raise typer.Exit()
+
+
+@app.callback()
+def main(
+    version: bool = typer.Option(
+        None,
+        "--version",
+        "-v",
+        callback=_display_version,
+        help="Display the version and exit.",
+        is_eager=True,  # Process version before other logic
+    ),
+):
+    pass
+
+
+@app.command("init")
+def init_cmd(
+    path: str = typer.Argument(None, help="Path to initialize the workspace at"),
+    force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing files"),
+) -> None:
+    """Initialize the workspace for Everybody Codes puzzles."""
+
+    # 0. Parse inputs
+    base_dir_name = "." if path is None else path
+    token = typer.prompt("Session Token", default="", show_default=False)
+
+    # 1. Create base directory
+    base_dir = utils.create_base(base_dir_name)
+    typer.echo(f"📁 Created workspace at: {base_dir}")
+
+    # 2. Initialize git repository
+    git_dir = base_dir / ".git"
+    if not git_dir.exists():
+        utils.create_git(base_dir)
+
+    # 3. Create .gitignore
+    gitignore_path = base_dir / ".gitignore"
+    if gitignore_path.exists() and not force:
+        typer.echo("⚠️ .gitignore already exists (use --force to overwrite).")
+    else:
+        utils.create_gitignore(base_dir)
+        typer.echo("🛑 .gitignore created")
+
+    # 4. Create README.md if requested
+    readme_path = base_dir / "README.md"
+    if readme_path.exists() and not force:
+        typer.echo("⚠️ README.md already exists (use --force to overwrite).")
+    else:
+        utils.create_readme(base_dir, force)
+        typer.echo("📝 README.md created")
+
+    # 5. Save session token if provided
+    token_path = utils.TOKEN_PATH
+    if not token:
+        typer.echo("⚠️ No session token provided (set it later with 'ecd set-token')")
+    elif token_path.exists() and not force:
+        typer.echo("⚠️ Session token file already exists (use --force to overwrite).")
+    else:
+        utils.set_token(token, force)
+        typer.echo(f"🔑 Session token saved to {token_path}")
+
+
+@app.command("set-token")
+def set_token_cmd(
+    token: str = typer.Argument(..., help="Session token to access puzzle inputs"),
+) -> None:
+    """Set the session token to operate with Everybody Codes webpage."""
+    utils.set_token(token)
+    typer.echo("🔑 Session token saved to /home/.config/ecd/token")
+
+
+@app.command("get")
+def get_cmd(
+    quest: int = typer.Argument(..., help="Quest number (e.g. 3)"),
+    year: int = typer.Option(datetime.now().year, "--year", "-y", help="Event year"),
+    part: int = typer.Option(1, "--part", "-p", help="Puzzle part (1, 2, or 3)"),
+    force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing files"),
+) -> None:
+    """Download input data for a given quest and create local structure."""
+
+    # 0. Locate base directory
+    base_dir = utils.find_base()
+
+    # 1. Ensure session token exists
+    if not utils.get_token():
+        typer.echo(
+            "❌ Error: Session token not found in .env. Use 'ecd set-token' to set it."
+        )
+        raise typer.Exit(1)
+
+    # 2. Download the input for the given part
+    try:
+        input_text = utils.download_input(year, quest, part)
+    except Exception as e:
+        typer.echo(f"❌ Failed to fetch input: {e}")
+        typer.echo("ℹ️ Maybe ")
+        raise typer.Exit(1)
+
+    # 3. Prepare directory structure
+    quest_dir = utils.create_quest_dir(base_dir, year, quest)
+
+    # 4. Create solution.py if missing
+    solution_file = quest_dir / "solution.py"
+    if solution_file.exists() and not force:
+        typer.echo("⚠️ solution.py already exists (use --force to overwrite).")
+    else:
+        utils.create_solution(quest_dir, force)
+        typer.echo("🧩 Created solution.py")
+
+    # 5. Save input
+    input_file = quest_dir / f"input/input_p{part}.txt"
+    if input_file.exists() and not force:
+        typer.echo("⚠️ Input file already exists (use --force to overwrite).")
+    else:
+        input_file.write_text(input_text, encoding="utf-8")
+        typer.echo(f"📥 Saved input for quest {quest:02d} part {part}.")
+
+    # 6. Ensure empty test file exists
+    test_file = quest_dir / f"test/test_p{part}.txt"
+    if test_file.exists() and not force:
+        typer.echo("⚠️ Test file already exists (use --force to overwrite).")
+    else:
+        test_file.touch(exist_ok=True)
+
+    typer.echo(
+        f"✅ Quest {quest:02d} (Part {part}) ready at {solution_file.relative_to(base_dir)}"
+    )
+
+
+@app.command("run")
+def run_cmd(
+    quest: int = typer.Argument(..., help="Quest number (e.g. 3)"),
+    year: int = typer.Option(datetime.now().year, "--year", "-y", help="Event year"),
+    part: int = typer.Option(1, "--part", "-p", help="Part number to execute"),
+) -> None:
+    """Execute the solution for a given quest and part using input data."""
+
+    # 0. Locate base directory
+    base_dir = utils.find_base()
+
+    # 1. Execute the solution
+    try:
+        result = utils.execute_part(base_dir, quest, year, part, mode="input")
+    except Exception as e:
+        typer.echo(f"❌ Failed to execute Quest {quest} Part {part}: {e}")
+        raise typer.Exit(1)
+
+    typer.echo(f"✅ Result for Quest {quest} Part {part}:\n{result}")
+
+
+@app.command("test")
+def test_cmd(
+    quest: int = typer.Argument(..., help="Quest number (e.g. 3)"),
+    year: int = typer.Option(datetime.now().year, "--year", "-y", help="Event year"),
+    part: int = typer.Option(1, "--part", "-p", help="Part number to test"),
+) -> None:
+    """Run the solution for a given quest and part using test data."""
+
+    # 0. Locate base directory
+    base_dir = utils.find_base()
+
+    # 1. Execute the solution in test mode
+    try:
+        result = utils.execute_part(base_dir, quest, year, part, mode="test")
+    except Exception as e:
+        typer.echo(f"❌ Failed to run test for Quest {quest} Part {part}: {e}")
+        raise typer.Exit(1)
+
+    typer.echo(f"🧪 Test result for Quest {quest} Part {part}:\n{result}")
+
+
+if __name__ == "__main__":
+    app()
