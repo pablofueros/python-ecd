@@ -1,0 +1,178 @@
+name: release
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+      - "[0-9]+.[0-9]+.[0-9]+a[0-9]+"
+      - "[0-9]+.[0-9]+.[0-9]+b[0-9]+"
+      - "[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
+
+env:
+  PACKAGE_NAME: "python-ecd"
+  OWNER: "pablofueros"
+
+jobs:
+
+  details:
+    name: Extract release details
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.extract.outputs.new_version }}
+      suffix: ${{ steps.extract.outputs.suffix }}
+      tag_name: ${{ steps.extract.outputs.tag_name }}
+    steps:
+      - name: Extract tag details
+        id: extract
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          NEW_VERSION=$(echo $TAG_NAME | awk -F'-' '{print $1}')
+          SUFFIX=$(echo $TAG_NAME | grep -oP '[a-z]+[0-9]+' || echo "")
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "suffix=$SUFFIX" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
+  sync_version:
+    name: Sync pyproject.toml version with tag
+    needs: details
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Sync pyproject.toml version with tag
+        run: |
+          TAG_VERSION="${{ needs.details.outputs.new_version }}"
+          echo "🔄 Updating pyproject.toml to version: $TAG_VERSION"
+          sed -i "s/^version = \".*\"/version = \"$TAG_VERSION\"/" pyproject.toml
+          echo "✅ pyproject.toml updated successfully."
+          grep "^version" pyproject.toml
+      - name: Upload updated pyproject.toml
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyproject-toml
+          path: pyproject.toml
+
+  check_pypi:
+    name: Validate version against PyPI
+    needs: details
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch latest version from PyPI
+        run: |
+          echo "🔎 Checking latest version of ${{ env.PACKAGE_NAME }} on PyPI..."
+          response=$(curl -s https://pypi.org/pypi/${{ env.PACKAGE_NAME }}/json || echo "{}")
+          latest_previous_version=$(echo $response | grep -oP '"releases":\{"\K[^"]+' | sort -rV | head -n 1)
+          if [ -z "$latest_previous_version" ]; then
+            echo "⚠️ Package not found on PyPI — assuming new package."
+            latest_previous_version="0.0.0"
+          fi
+          echo "📦 Latest version on PyPI: $latest_previous_version"
+          echo "latest_previous_version=$latest_previous_version" >> $GITHUB_ENV
+      - name: Ensure new version is greater than PyPI
+        run: |
+          NEW_VERSION=${{ needs.details.outputs.new_version }}
+          LATEST_VERSION=$latest_previous_version
+          echo "🔢 Comparing versions..."
+          echo "  - New:     $NEW_VERSION"
+          echo "  - Current: $LATEST_VERSION"
+          if [ "$(printf '%s\n' "$LATEST_VERSION" "$NEW_VERSION" | sort -rV | head -n 1)" != "$NEW_VERSION" ] || [ "$NEW_VERSION" == "$LATEST_VERSION" ]; then
+            echo "❌ Version $NEW_VERSION is not greater than $LATEST_VERSION on PyPI."
+            exit 1
+          else
+            echo "✅ Version $NEW_VERSION is newer than $LATEST_VERSION — continuing."
+          fi
+
+  setup_and_build:
+    name: Build and package distribution
+    needs: [details, check_pypi, sync_version]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Download synced pyproject.toml
+        uses: actions/download-artifact@v4
+        with:
+          name: pyproject-toml
+      - name: Install uv
+        uses: ./.github/actions/setup
+      - name: Install dependencies
+        run: |
+          echo "Installing dependencies via uv..."
+          uv sync
+      - name: Build source and wheel distribution
+        run: |
+          echo "Building package..."
+          uv build
+          echo "Build complete. Contents of dist/:"
+          ls -lh dist/
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  pypi_publish:
+    name: Publish to PyPI
+    needs: [setup_and_build, details]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Download built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Install uv
+        uses: ./.github/actions/setup
+      - name: Publish to PyPI
+        run: |
+          echo "Publishing package to PyPI..."
+          uv publish
+          echo "✅ Publish successful!"
+
+  github_release:
+    name: Create GitHub Release
+    needs: [setup_and_build, details]
+    runs-on: ubuntu-latest
+    env:
+      TAG_NAME: ${{ needs.details.outputs.tag_name }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Create GitHub Release
+        run: |
+          echo "Creating release for tag: $TAG_NAME"
+          gh release create "$TAG_NAME" dist/* \
+            --title "Release $TAG_NAME" \
+            --generate-notes
+          echo "✅ Release $TAG_NAME created successfully!"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  commit_version_bump:
+    name: Commit version bump
+    needs: [details, sync_version, pypi_publish, github_release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download updated pyproject.toml
+        uses: actions/download-artifact@v4
+        with:
+          name: pyproject-toml
+      - name: Commit updated version
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: bump version to ${{ needs.details.outputs.new_version }}"
+          file_pattern: "pyproject.toml"
