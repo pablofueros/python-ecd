@@ -178,7 +178,7 @@ wheels = [
 
 [[package]]
 name = "python-ecd"
-version = "0.1.4"
+version = "0.1.10"
 source = { editable = "." }
 dependencies = [
     { name = "everybody-codes-data" },
