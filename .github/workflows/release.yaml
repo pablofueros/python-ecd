@@ -162,6 +162,8 @@ jobs:
     name: Commit version bump
     needs: [details, sync_version, pypi_publish, github_release]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
