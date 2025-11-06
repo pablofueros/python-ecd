@@ -10,31 +10,36 @@ jobs:
   lock_file:
     runs-on: ubuntu-latest
     steps:
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
       - run: uv lock --locked
 
   linting:
     runs-on: ubuntu-latest
     needs: [lock_file]
     steps:
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
       - run: uvx ruff check .
   formatting:
     runs-on: ubuntu-latest
     needs: [lock_file]
     steps:
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
       - run: uvx ruff format --check .
   type_consistency:
     runs-on: ubuntu-latest
     needs: [lock_file]
     steps:
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
       - run: uv run ty check
 
   build:
     runs-on: [ubuntu-latest]
     needs: [linting, formatting, type_consistency]
     steps:
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
       - run: uv build
