@@ -183,6 +183,18 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: project-metadata
+          path: project-metadata
+      - name: Move updated files to repo root
+        run: |
+          echo "Moving updated pyproject.toml and uv.lock to repository root..."
+          mv project-metadata/pyproject.toml pyproject.toml
+          mv project-metadata/uv.lock uv.lock
+          echo "✅ Files moved successfully."
+      - name: Debug file changes
+        run: |
+          git status
+          echo "------"
+          git diff --stat
       - name: Switch to main branch
         run: |
           git fetch origin main
