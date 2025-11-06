@@ -32,7 +32,7 @@ jobs:
           echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
 
   sync_version:
-    name: Sync pyproject.toml version with tag
+    name: Sync pyproject.toml and uv.lock with the new version
     needs: details
     runs-on: ubuntu-latest
     steps:
@@ -57,8 +57,9 @@ jobs:
         with:
           name: project-metadata
           path: |
-            pyproject.toml
-            uv.lock
+            ${{ github.workspace }}/pyproject.toml
+            ${{ github.workspace }}/uv.lock
+
 
   check_pypi:
     name: Validate version against PyPI
