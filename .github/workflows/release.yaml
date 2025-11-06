@@ -38,6 +38,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
       - name: Sync pyproject.toml version with tag
         run: |
           TAG_VERSION="${{ needs.details.outputs.new_version }}"
@@ -45,11 +47,18 @@ jobs:
           sed -i "s/^version = \".*\"/version = \"$TAG_VERSION\"/" pyproject.toml
           echo "✅ pyproject.toml updated successfully."
           grep "^version" pyproject.toml
+      - name: Regenerate lock file
+        run: |
+          echo "🔐 Regenerating uv.lock to match pyproject.toml..."
+          uv lock
+          echo "✅ uv.lock successfully updated."
       - name: Upload updated pyproject.toml
         uses: actions/upload-artifact@v4
         with:
-          name: pyproject-toml
-          path: pyproject.toml
+          name: project-metadata
+          path: |
+            pyproject.toml
+            uv.lock
 
   check_pypi:
     name: Validate version against PyPI
@@ -88,10 +97,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Download synced pyproject.toml
+      - name: Download updated project metadata
         uses: actions/download-artifact@v4
         with:
-          name: pyproject-toml
+          name: project-metadata
       - name: Install uv
         uses: astral-sh/setup-uv@v4
       - name: Install dependencies
@@ -169,10 +178,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Download updated pyproject.toml
+      - name: Download updated project metadata
         uses: actions/download-artifact@v4
         with:
-          name: pyproject-toml
+          name: project-metadata
       - name: Switch to main branch
         run: |
           git fetch origin main
@@ -181,4 +190,6 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: bump version to ${{ needs.details.outputs.new_version }}"
-          file_pattern: "pyproject.toml"
+          file_pattern: |
+            pyproject.toml
+            uv.lock
