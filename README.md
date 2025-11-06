@@ -116,7 +116,7 @@ ecd --version
 
 ## ©️ License
 
-[MIT License](LICENSE)
+This project is licensed under the terms of the MIT license.
 
 ## 🤝 Contributing
 
