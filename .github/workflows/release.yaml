@@ -209,11 +209,3 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore: bump version to ${{ needs.details.outputs.new_version }}"
-          file_pattern: |
-            pyproject.toml
-            uv.lock
-
-  post_release_quality:
-    name: Run code quality after release
-    needs: [commit_version_bump]
-    uses: ./.github/workflows/code-quality.yaml
