@@ -6,6 +6,12 @@
 
 ### **✨ A Python CLI tool for managing Everybody Codes puzzles ✨**
 
+[![Code Quality](https://github.com/pablofueros/python-ecd/actions/workflows/code-quality.yaml/badge.svg)](https://github.com/pablofueros/python-ecd/actions/workflows/code-quality.yaml)
+[![Release](https://github.com/pablofueros/python-ecd/actions/workflows/release.yaml/badge.svg)](https://github.com/pablofueros/python-ecd/actions/workflows/release.yaml)
+[![PyPI Latest Release](https://img.shields.io/pypi/v/python-ecd.svg)](https://pypi.org/project/python-ecd/)
+[![PyPI Downloads](https://static.pepy.tech/badge/python-ecd)](https://pepy.tech/projects/python-ecd)
+![versions](https://img.shields.io/pypi/pyversions/python-ecd.svg)
+
 ---
 
 </div>
