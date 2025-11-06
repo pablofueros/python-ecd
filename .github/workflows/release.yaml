@@ -207,3 +207,8 @@ jobs:
           file_pattern: |
             pyproject.toml
             uv.lock
+
+  post_release_quality:
+    name: Run code quality after release
+    needs: [commit_version_bump]
+    uses: ./.github/workflows/code-quality.yaml

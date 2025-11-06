@@ -5,6 +5,8 @@ on:
       - "**"
     tags-ignore:
       - "**"
+  workflow_call:
+    
 jobs:
   lock_file:
     runs-on: ubuntu-latest
