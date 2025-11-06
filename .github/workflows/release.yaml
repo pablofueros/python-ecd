@@ -52,13 +52,18 @@ jobs:
           echo "🔐 Regenerating uv.lock to match pyproject.toml..."
           uv lock
           echo "✅ uv.lock successfully updated."
-      - name: Upload updated pyproject.toml
+      - name: Prepare metadata folder
+        run: |
+          mkdir -p metadata
+          cp pyproject.toml metadata/
+          cp uv.lock metadata/
+          echo "📦 Metadata folder contents:"
+          ls -l metadata
+      - name: Upload updated project metadata
         uses: actions/upload-artifact@v4
         with:
           name: project-metadata
-          path: |
-            ${{ github.workspace }}/pyproject.toml
-            ${{ github.workspace }}/uv.lock
+          path: metadata
 
 
   check_pypi:
@@ -190,11 +195,7 @@ jobs:
           mv project-metadata/pyproject.toml pyproject.toml
           mv project-metadata/uv.lock uv.lock
           echo "✅ Files moved successfully."
-      - name: Debug file changes
-        run: |
-          git status
-          echo "------"
-          git diff --stat
+          ls -l
       - name: Switch to main branch
         run: |
           git fetch origin main
