@@ -1,6 +1,8 @@
 # 🧩 Everybody Codes Solutions
 
-My solutions to the [Everybody Codes](https://everybody.codes/) puzzles (managed by the [python-ecd](https://github.com/pablofueros/python-ecd) library).
+My solutions to the [Everybody Codes](https://everybody.codes/) puzzles — powered by **[`python-ecd`](https://github.com/pablofueros/python-ecd)** ⚙️
+
+> A lightweight CLI tool to fetch, run, and organize Everybody Codes challenges with ease.
 
 ---
 
@@ -25,6 +27,8 @@ Each quest is stored under `events/<year>/quest_<id>/` and contains:
 ---
 
 ## 🚀 Usage
+
+Note that **[`python-ecd`](https://github.com/pablofueros/python-ecd)** must be installed.
 
 ```bash
 # Initialize your workspace
