@@ -9,7 +9,10 @@ classifiers = [
 ]
 authors = [{ name = "Pablo Garcia", email = "pablofueros@gmail.com" }]
 requires-python = ">=3.13"
-dependencies = ["everybody-codes-data==0.2", "typer>=0.20.0"]
+dependencies = [
+    "everybody-codes-data==0.3",
+    "typer>=0.20.0",
+]
 
 [project.scripts]
 python-ecd = "python_ecd.cli:app"
