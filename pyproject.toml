@@ -1,6 +1,6 @@
 [project]
 name = "python-ecd"
-version = "0.1.13"
+version = "0.2.0"
 description = "Python CLI for Everybody Codes"
 readme = "README.md"
 classifiers = [
