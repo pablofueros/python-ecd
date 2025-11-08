@@ -71,16 +71,18 @@ Note that is not necessary if you set it during initialization.
 
 ### Download Puzzle Input
 
-Get the input for a specific puzzle:
+Download the input for a specific puzzle:
 
 ```bash
-ecd get <QUEST_NUMBER> [OPTIONS]
+ecd pull <QUEST_NUMBER> [OPTIONS]
 ```
 
 Options:
 - `--year`, `-y`: Event year (default: actual)
 - `--part`, `-p`: Puzzle part (default: 1)
 - `--force`, `-f`: Overwrite existing files
+
+This command will create the necessary dirs and files if they do not exist.
 
 ### Run Solutions
 
