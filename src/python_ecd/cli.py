@@ -185,5 +185,37 @@ def test_cmd(
     typer.echo(f"🧪 Test result for Quest {quest} Part {part}:\n{result}")
 
 
+@app.command("push")
+def push_cmd(
+    quest: int = typer.Argument(..., help="Quest number (e.g. 3)"),
+    year: int = typer.Option(datetime.now().year, "--year", "-y", help="Event year"),
+    part: int = typer.Option(1, "--part", "-p", help="Part number to test"),
+) -> None:
+    """Submit the solution for a given quest and part."""
+
+    # 0. Locate base directory
+    base_dir = utils.find_base()
+
+    # 1. Submit the solution
+    try:
+        result = utils.push_solution(base_dir, quest, year, part)
+    except Exception as e:
+        typer.echo(f"❌ Failed to submit solution for Quest {quest} Part {part}: {e}")
+        raise typer.Exit(1)
+
+    if result.get("correct"):
+        typer.echo(
+            f"✅ Correct answer for Quest {quest} Part {part}!"
+            f"\n🏅 - Global place: {result.get('globalPlace', '?')}"
+            f"\n⏱️ - Global time: {result.get('globalTime', '?')}"
+        )
+    else:
+        typer.echo(
+            f"❌ Incorrect answer for Quest {quest} Part {part}:"
+            f"\n - lengthCorrect={result.get('lengthCorrect')}, "
+            f"\n - firstCorrect={result.get('firstCorrect')}"
+        )
+
+
 if __name__ == "__main__":
     app()

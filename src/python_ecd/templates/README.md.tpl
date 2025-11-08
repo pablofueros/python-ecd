@@ -2,7 +2,7 @@
 
 My solutions to the [Everybody Codes](https://everybody.codes/) puzzles — powered by **[`python-ecd`](https://github.com/pablofueros/python-ecd)** ⚙️
 
-> A lightweight CLI tool to fetch, run, and organize Everybody Codes challenges with ease.
+> A lightweight CLI tool to fetch, test, and submit Everybody Codes challenges with ease.
 
 ---
 
@@ -42,3 +42,6 @@ ecd test 3 --part 1
 
 # Execute your actual input
 ecd run 3 --part 1
+
+# Submit your answer
+ecd push 3 --part 1

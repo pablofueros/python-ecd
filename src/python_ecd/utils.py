@@ -3,8 +3,9 @@ import importlib.util
 import io
 import subprocess
 from pathlib import Path
+from typing import Literal, cast
 
-from ecd import get_inputs
+from ecd import get_inputs, submit
 
 
 def _read_template(template_name: str) -> str:
@@ -176,3 +177,61 @@ def execute_part(
         raise ValueError(f"{func_name} returned None.")
 
     return str(result)
+
+
+def push_solution(
+    base_dir: Path,
+    quest: int,
+    year: int,
+    part: int,
+) -> dict:
+    """
+    Submit the solution for a given quest and part using input data.
+
+    Returns:
+        The response message from the submission.
+    """
+
+    quest_dir = base_dir / "events" / str(year) / f"quest_{quest:02d}"
+    solution_path = quest_dir / "solution.py"
+    if not solution_path.exists():
+        raise FileNotFoundError(
+            f"Missing solution file: {solution_path.relative_to(base_dir)}"
+        )
+
+    # Dynamic import
+    spec = importlib.util.spec_from_file_location("solution", solution_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(
+            f"Could not load module from {solution_path.relative_to(base_dir)}"
+        )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    func_name = f"part_{part}"
+    func = getattr(module, func_name, None)
+    if not callable(func):
+        raise AttributeError(f"No function '{func_name}' defined in solution.py")
+
+    # Fetch input data
+    input_text = download_input(year=year, quest=quest, part=part)
+
+    # Run the function
+    answer = func(input_text)
+    if answer is None:
+        raise ValueError(f"{func_name} returned None.")
+
+    # Submit the answer
+    with contextlib.redirect_stderr(io.StringIO()):
+        result = submit(
+            quest=quest,
+            event=year,
+            part=cast(Literal[1, 2, 3], part),
+            answer=str(answer),
+            quiet=True,
+        )
+
+    if result.status != 200:
+        raise RuntimeError(f"Submission failed with status {result.status}")
+
+    return result.json()
