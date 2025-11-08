@@ -106,6 +106,18 @@ Options:
 - `--year`: Event year (default: actual)
 - `--part`: Part number to test (default: 1)
 
+### Submit Solutions
+
+Submit your solution for a specific puzzle:
+
+```bash
+ecd push <QUEST_NUMBER> [OPTIONS]
+```
+
+Options:
+- `--year`: Event year (default: actual)
+- `--part`: Part number to test (default: 1)
+
 ### Display Version
 
 Show the current version of the tool:
