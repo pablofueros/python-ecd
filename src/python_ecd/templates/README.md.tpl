@@ -35,7 +35,7 @@ Note that **[`python-ecd`](https://github.com/pablofueros/python-ecd)** must be 
 ecd init
 
 # Fetch a puzzle input ()
-ecd get 3  # Quest 3 of the current year
+ecd pull 3  # Quest 3 of the current year
 
 # Run your test cases
 ecd test 3 --part 1

@@ -85,8 +85,8 @@ def set_token_cmd(
     typer.echo("🔑 Session token saved to /home/.config/ecd/token")
 
 
-@app.command("get")
-def get_cmd(
+@app.command("pull")
+def pull_cmd(
     quest: int = typer.Argument(..., help="Quest number (e.g. 3)"),
     year: int = typer.Option(datetime.now().year, "--year", "-y", help="Event year"),
     part: int = typer.Option(1, "--part", "-p", help="Puzzle part (1, 2, or 3)"),
