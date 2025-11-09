@@ -241,7 +241,7 @@ def push_solution(
 def update_readme_progress(base_dir: Path, year: int, quest: int, part: int) -> None:
     """
     Update (or create) the README progress table with a ✅ for a solved quest part.
-    If the quest row does not exist yet, it is created.
+    Keeps rows sorted by (year, quest).
     """
 
     readme_path = base_dir / "README.md"
@@ -271,28 +271,46 @@ def update_readme_progress(base_dir: Path, year: int, quest: int, part: int) -> 
         len(lines),
     )
 
-    # Trim blank lines at the end of the table region
+    # Trim trailing blank lines
     while table_end > table_start and lines[table_end - 1].strip() == "":
         table_end -= 1
 
-    # Look for an existing row
-    quest_pattern = re.compile(rf"^\|\s*{year}\s*\|\s*{quest}\s*\|")
-    row_index = next(
-        (i for i in range(table_start, table_end) if quest_pattern.match(lines[i])),
-        None,
-    )
+    # Extract rows (skip header and separator)
+    table_rows = [
+        line.strip()
+        for line in lines[table_start + 2 : table_end]
+        if line.strip().startswith("|") and not line.strip().startswith("|------")
+    ]
 
-    if row_index is not None:
-        # Update existing row
-        row_global_index = table_start + row_index
-        row = [x.strip() for x in lines[row_global_index].split("|")]
-        for i in range(3):
-            if i == part - 1:
-                row[2 + i] = "✅"
-        lines[row_global_index] = f"| {year} | {quest} | {' | '.join(row[2:5])} |"
-    else:
-        # Insert new row before table_end
-        new_row = f"| {year} | {quest} | {' | '.join(['✅' if i == part - 1 else '⬜' for i in range(3)])} |"
-        lines.insert(table_end, new_row)
+    parsed_rows: list[tuple[int, int, list[str]]] = []
+    for row in table_rows:
+        cells = [x.strip() for x in row.strip("|").split("|")]
+        if len(cells) >= 5 and cells[0].isdigit() and cells[1].isdigit():
+            parsed_rows.append((int(cells[0]), int(cells[1]), cells[2:5]))
 
-    readme_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # Update or insert the current quest
+    updated = False
+    for i, (y, q, parts) in enumerate(parsed_rows):
+        if y == year and q == quest:
+            parts[part - 1] = "✅"
+            parsed_rows[i] = (y, q, parts)
+            updated = True
+            break
+
+    if not updated:
+        new_parts = ["✅" if i == part - 1 else "⬜" for i in range(3)]
+        parsed_rows.append((year, quest, new_parts))
+
+    # Sort by year and quest
+    parsed_rows.sort(key=lambda x: (x[0], x[1]))
+
+    # Rebuild table
+    rebuilt_table = [
+        "| Event | Quest | Part 1 | Part 2 | Part 3 |",
+        "|------|--------|--------|--------|--------|",
+        *[f"| {y} | {q} | {' | '.join(parts)} |" for y, q, parts in parsed_rows],
+    ]
+
+    # Replace old lines with the new table
+    new_lines = lines[:table_start] + rebuilt_table + lines[table_end:]
+    readme_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
