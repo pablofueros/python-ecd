@@ -204,6 +204,7 @@ def push_cmd(
         raise typer.Exit(1)
 
     if result.get("correct"):
+        utils.update_readme_progress(base_dir, year, quest, part)
         typer.echo(
             f"✅ Correct answer for Quest {quest} Part {part}!"
             f"\n🏅 - Global place: {result.get('globalPlace', '?')}"

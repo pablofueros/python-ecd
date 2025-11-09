@@ -1,6 +1,7 @@
 import contextlib
 import importlib.util
 import io
+import re
 import subprocess
 from pathlib import Path
 from typing import Literal, cast
@@ -235,3 +236,63 @@ def push_solution(
         raise RuntimeError(f"Submission failed with status {result.status}")
 
     return result.json()
+
+
+def update_readme_progress(base_dir: Path, year: int, quest: int, part: int) -> None:
+    """
+    Update (or create) the README progress table with a ✅ for a solved quest part.
+    If the quest row does not exist yet, it is created.
+    """
+
+    readme_path = base_dir / "README.md"
+    if not readme_path.exists():
+        return
+
+    text = readme_path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+
+    # Locate the table header
+    header_pattern = re.compile(r"^\|\s*Event\s*\|\s*Quest\s*\|\s*Part 1\s*\|")
+    table_start = next(
+        (i for i, line in enumerate(lines) if header_pattern.match(line)), None
+    )
+
+    # Exit if no table found
+    if table_start is None:
+        return
+
+    # Determine where the table ends (before a line starting with --- or next heading)
+    table_end = next(
+        (
+            i
+            for i in range(table_start + 1, len(lines))
+            if lines[i].strip().startswith("---") or lines[i].startswith("## ")
+        ),
+        len(lines),
+    )
+
+    # Trim blank lines at the end of the table region
+    while table_end > table_start and lines[table_end - 1].strip() == "":
+        table_end -= 1
+
+    # Look for an existing row
+    quest_pattern = re.compile(rf"^\|\s*{year}\s*\|\s*{quest}\s*\|")
+    row_index = next(
+        (i for i in range(table_start, table_end) if quest_pattern.match(lines[i])),
+        None,
+    )
+
+    if row_index is not None:
+        # Update existing row
+        row_global_index = table_start + row_index
+        row = [x.strip() for x in lines[row_global_index].split("|")]
+        for i in range(3):
+            if i == part - 1:
+                row[2 + i] = "✅"
+        lines[row_global_index] = f"| {year} | {quest} | {' | '.join(row[2:5])} |"
+    else:
+        # Insert new row before table_end
+        new_row = f"| {year} | {quest} | {' | '.join(['✅' if i == part - 1 else '⬜' for i in range(3)])} |"
+        lines.insert(table_end, new_row)
+
+    readme_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
