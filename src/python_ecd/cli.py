@@ -89,10 +89,9 @@ def set_token_cmd(
 def pull_cmd(
     quest: int = typer.Argument(..., help="Quest number (e.g. 3)"),
     year: int = typer.Option(datetime.now().year, "--year", "-y", help="Event year"),
-    part: int = typer.Option(1, "--part", "-p", help="Puzzle part (1, 2, or 3)"),
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing files"),
 ) -> None:
-    """Download input data for a given quest and create local structure."""
+    """Download available input data for a given quest and create local structure."""
 
     # 0. Locate base directory
     base_dir = utils.find_base()
@@ -106,10 +105,9 @@ def pull_cmd(
 
     # 2. Download the input for the given part
     try:
-        input_text = utils.download_input(year, quest, part)
+        input_dict = utils.download_input(year, quest)
     except Exception as e:
         typer.echo(f"❌ Failed to fetch input: {e}")
-        typer.echo("ℹ️ Maybe ")
         raise typer.Exit(1)
 
     # 3. Prepare directory structure
@@ -123,24 +121,24 @@ def pull_cmd(
         utils.create_solution(quest_dir, force)
         typer.echo("🧩 Created solution.py")
 
-    # 5. Save input
-    input_file = quest_dir / f"input/input_p{part}.txt"
-    if input_file.exists() and not force:
-        typer.echo("⚠️ Input file already exists (use --force to overwrite).")
-    else:
-        input_file.write_text(input_text, encoding="utf-8")
-        typer.echo(f"📥 Saved input for quest {quest:02d} part {part}.")
+    # 5. Save available inputs
+    for key, input in input_dict.items():
+        input_file = quest_dir / f"input/input_p{key}.txt"
+        if input_file.exists() and not force:
+            typer.echo("⚠️ Input file already exists (use --force to overwrite).")
+        else:
+            input_file.write_text(input, encoding="utf-8")
+            typer.echo(f"📥 Saved input for quest {quest:02d} part {key}.")
 
     # 6. Ensure empty test file exists
-    test_file = quest_dir / f"test/test_p{part}.txt"
-    if test_file.exists() and not force:
-        typer.echo("⚠️ Test file already exists (use --force to overwrite).")
-    else:
-        test_file.touch(exist_ok=True)
+    for key, input in input_dict.items():
+        test_file = quest_dir / f"test/test_p{key}.txt"
+        if test_file.exists() and not force:
+            typer.echo("⚠️ Test file already exists (use --force to overwrite).")
+        else:
+            test_file.touch(exist_ok=True)
 
-    typer.echo(
-        f"✅ Quest {quest:02d} (Part {part}) ready at {solution_file.relative_to(base_dir)}"
-    )
+    typer.echo(f"✅ Quest {quest:02d} ready at {solution_file.relative_to(base_dir)}")
 
 
 @app.command("run")
