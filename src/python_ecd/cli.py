@@ -214,6 +214,42 @@ def push_cmd(
             f"\n⏱️ - Global time: {utils.format_duration(result.get('globalTime'))}"
             f"\n⏱️ - Local time: {utils.format_duration(result.get('localTime'))}"
         )
+
+        # Download the next part (if the quest is not ended)
+        if part == 3:
+            return
+        else:
+            typer.echo()
+
+        # Download the input for the given part
+        try:
+            input_dict = utils.download_input(year, quest)
+        except Exception as e:
+            typer.echo(f"❌ Failed to fetch input: {e}")
+            raise typer.Exit(1)
+
+        # Prepare directory structure
+        quest_dir = utils.create_quest_dir(base_dir, year, quest)
+
+        # 5. Save available inputs
+        input_file = quest_dir / f"input/input_p{part + 1}.txt"
+        if input_file.exists():
+            typer.echo(
+                f"⚠️ Input file for part {part + 1} already exists (use ecd pull --force to overwrite)."
+            )
+        else:
+            input_file.write_text(input_dict[str(part + 1)], encoding="utf-8")
+            typer.echo(f"📥 Saved input for quest {quest:02d} part {part + 1}.")
+
+        # 6. Ensure empty test file exists
+        test_file = quest_dir / f"test/test_p{part + 1}.txt"
+        if test_file.exists():
+            typer.echo(
+                f"⚠️ Test file for part {part + 1} already exists (use ecd pull --force to overwrite)."
+            )
+        else:
+            test_file.touch(exist_ok=True)
+
     else:
         typer.echo(
             f"❌ Incorrect answer for Quest {quest} Part {part}:"
