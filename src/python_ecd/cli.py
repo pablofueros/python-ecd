@@ -123,8 +123,8 @@ def pull_cmd(
         utils.create_solution(quest_dir, force)
         typer.echo("🧩 Created solution.py")
 
-    # 5. Save available inputs
     for key, input in input_dict.items():
+        # 5. Save available inputs
         input_file = quest_dir / f"input/input_p{key}.txt"
         if input_file.exists() and not force:
             typer.echo(
@@ -134,8 +134,7 @@ def pull_cmd(
             input_file.write_text(input, encoding="utf-8")
             typer.echo(f"📥 Saved input for quest {quest:02d} part {key}.")
 
-    # 6. Ensure empty test file exists
-    for key, input in input_dict.items():
+        # 6. Ensure empty test file exists
         test_file = quest_dir / f"test/test_p{key}.txt"
         if test_file.exists() and not force:
             typer.echo(
