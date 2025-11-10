@@ -207,7 +207,9 @@ def push_cmd(
         typer.echo(
             f"✅ Correct answer for Quest {quest} Part {part}!"
             f"\n🏅 - Global place: {result.get('globalPlace', '?')}"
-            f"\n⏱️ - Global time: {result.get('globalTime', '?')}"
+            f"\n🏅 - Global score: {result.get('globalScore', '?')}"
+            f"\n⏱️ - Global time: {utils.format_duration(result.get('globalTime'))}"
+            f"\n⏱️ - Local time: {utils.format_duration(result.get('localTime'))}"
         )
     else:
         typer.echo(

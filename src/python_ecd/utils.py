@@ -2,6 +2,7 @@ import contextlib
 import importlib.util
 import io
 import subprocess
+from datetime import timedelta
 from pathlib import Path
 from typing import Literal, cast
 
@@ -235,3 +236,27 @@ def push_solution(
         raise RuntimeError(f"Submission failed with status {result.status}")
 
     return result.json()
+
+
+def format_duration(ms: int | float | None) -> str:
+    """Format duration in milliseconds to a human-readable string using timedelta."""
+    if ms is None:
+        return "?"
+
+    td = timedelta(milliseconds=ms)
+
+    days = td.days
+    hours, remainder = divmod(td.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    if hours:
+        parts.append(f"{hours}h")
+    if minutes:
+        parts.append(f"{minutes}m")
+    if seconds or not parts:
+        parts.append(f"{seconds}s")
+
+    return " ".join(parts)
