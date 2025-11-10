@@ -116,7 +116,9 @@ def pull_cmd(
     # 4. Create solution.py if missing
     solution_file = quest_dir / "solution.py"
     if solution_file.exists() and not force:
-        typer.echo("⚠️ solution.py already exists (use --force to overwrite).")
+        typer.echo(
+            "⚠️ The solution python file already exists (use --force to overwrite)."
+        )
     else:
         utils.create_solution(quest_dir, force)
         typer.echo("🧩 Created solution.py")
@@ -125,7 +127,9 @@ def pull_cmd(
     for key, input in input_dict.items():
         input_file = quest_dir / f"input/input_p{key}.txt"
         if input_file.exists() and not force:
-            typer.echo("⚠️ Input file already exists (use --force to overwrite).")
+            typer.echo(
+                f"⚠️ Input file for part {key} already exists (use --force to overwrite)."
+            )
         else:
             input_file.write_text(input, encoding="utf-8")
             typer.echo(f"📥 Saved input for quest {quest:02d} part {key}.")
@@ -134,7 +138,9 @@ def pull_cmd(
     for key, input in input_dict.items():
         test_file = quest_dir / f"test/test_p{key}.txt"
         if test_file.exists() and not force:
-            typer.echo("⚠️ Test file already exists (use --force to overwrite).")
+            typer.echo(
+                f"⚠️ Test file for part {key} already exists (use --force to overwrite)."
+            )
         else:
             test_file.touch(exist_ok=True)
 
