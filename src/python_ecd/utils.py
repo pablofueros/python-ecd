@@ -109,20 +109,12 @@ def get_token() -> str | None:
     return TOKEN_PATH.read_text().strip()
 
 
-def download_input(year: int, quest: int, part: int) -> str:
+def download_input(year: int, quest: int) -> dict[str, str]:
     """
-    Fetch the input text for a specific quest and part.
-    Raises if part not available.
+    Fetch the available input text for a specific quest.
     """
-
     with contextlib.redirect_stderr(io.StringIO()):
-        data = get_inputs(quest=quest, event=year)
-
-    key = str(part)
-    if key not in data:
-        raise ValueError(f"Part {part} not unlocked or not available.")
-
-    return data[key]
+        return get_inputs(quest=quest, event=year)
 
 
 def execute_part(
@@ -215,7 +207,8 @@ def push_solution(
         raise AttributeError(f"No function '{func_name}' defined in solution.py")
 
     # Fetch input data
-    input_text = download_input(year=year, quest=quest, part=part)
+    input_dict = download_input(year=year, quest=quest)
+    input_text = input_dict[str(part)]
 
     # Run the function
     answer = func(input_text)
