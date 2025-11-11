@@ -1,11 +1,13 @@
 import contextlib
 import importlib.util
 import io
+import os
 import subprocess
 from datetime import timedelta
 from pathlib import Path
 from typing import Literal
 
+from dotenv import load_dotenv, set_key
 from ecd import get_inputs, submit
 
 
@@ -92,21 +94,20 @@ def create_solution(quest_dir: Path, force: bool) -> None:
         solution_path.write_text(content, encoding="utf-8")
 
 
-TOKEN_PATH = Path.home() / ".config" / "ecd" / "token"
+ENV_PATH = Path(".env")
 
 
 def set_token(token: str, force: bool = False) -> None:
-    """Create ~/.config/ecd/token with the given token."""
-    config_dir = TOKEN_PATH.parent
-    config_dir.mkdir(parents=True, exist_ok=True)
-    TOKEN_PATH.write_text(token.strip())
+    """Store the session token in the .env file."""
+    ENV_PATH.touch(exist_ok=True)
+    load_dotenv(dotenv_path=ENV_PATH)
+    set_key(str(ENV_PATH), "ECD_TOKEN", token.strip())
 
 
 def get_token() -> str | None:
-    """Read the token if it exists, else return None."""
-    if not TOKEN_PATH.exists():
-        return None
-    return TOKEN_PATH.read_text().strip()
+    """Return the session token from the .env file, or None if not found."""
+    load_dotenv(dotenv_path=ENV_PATH)
+    return os.getenv("ECD_TOKEN")
 
 
 def download_input(year: int, quest: int) -> dict[str, str]:
