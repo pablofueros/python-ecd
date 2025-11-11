@@ -209,10 +209,10 @@ def push_cmd(
     if result.get("correct"):
         typer.echo(
             f"✅ Correct answer for Quest {quest} Part {part}!"
-            f"\n🏅 - Global place: {result.get('globalPlace', '?')}"
-            f"\n🏅 - Global score: {result.get('globalScore', '?')}"
-            f"\n⏱️ - Global time: {utils.format_duration(result.get('globalTime'))}"
-            f"\n⏱️ - Local time: {utils.format_duration(result.get('localTime'))}"
+            f"\n - Global place: {result.get('globalPlace', '?')}"
+            f"\n - Global score: {result.get('globalScore', '?')}"
+            f"\n - Global time: {utils.format_duration(result.get('globalTime'))}"
+            f"\n - Local time: {utils.format_duration(result.get('localTime'))}"
         )
 
         # Download the next part (if the quest is not ended)
