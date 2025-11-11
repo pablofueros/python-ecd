@@ -211,6 +211,13 @@ def push_cmd(
     # 0. Locate base directory
     base_dir = utils.find_base()
 
+    # Ensure session token exists
+    if not utils.get_token():
+        typer.echo(
+            "❌ Error: Session token not found in .env. Use 'ecd set-token' to set it."
+        )
+        raise typer.Exit(1)
+
     # 1. Submit the solution
     try:
         result = utils.push_solution(base_dir, quest, year, part)
