@@ -63,6 +63,9 @@ ecd init everybody-codes-solutions
 
 Note that if the directory does not exist, it will be created.
 
+Options:
+- `--force`, `-f`: Overwrite existing files
+
 ### Set Session Token
 
 Configure your [session token](https://github.com/wimglenn/everybody-codes-data?tab=readme-ov-file#auth) for accessing puzzle inputs:
