@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 import typer
 
@@ -103,7 +104,7 @@ def pull_cmd(
         )
         raise typer.Exit(1)
 
-    # 2. Download the input for the given part
+    # 2. Download the available input
     try:
         input_dict = utils.download_input(year, quest)
     except Exception as e:
@@ -123,22 +124,22 @@ def pull_cmd(
         utils.create_solution(quest_dir, force)
         typer.echo("🧩 Created solution.py")
 
-    for key, input in input_dict.items():
+    for part, input in input_dict.items():
         # 5. Save available inputs
-        input_file = quest_dir / f"input/input_p{key}.txt"
+        input_file = quest_dir / f"input/input_p{part}.txt"
         if input_file.exists() and not force:
             typer.echo(
-                f"⚠️ Input file for part {key} already exists (use --force to overwrite)."
+                f"⚠️ Input file for part {part} already exists (use --force to overwrite)."
             )
         else:
             input_file.write_text(input, encoding="utf-8")
-            typer.echo(f"📥 Saved input for quest {quest:02d} part {key}.")
+            typer.echo(f"📥 Saved input for quest {quest:02d} part {part}.")
 
         # 6. Ensure empty test file exists
-        test_file = quest_dir / f"test/test_p{key}.txt"
+        test_file = quest_dir / f"test/test_p{part}.txt"
         if test_file.exists() and not force:
             typer.echo(
-                f"⚠️ Test file for part {key} already exists (use --force to overwrite)."
+                f"⚠️ Test file for part {part} already exists (use --force to overwrite)."
             )
         else:
             test_file.touch(exist_ok=True)
@@ -150,7 +151,9 @@ def pull_cmd(
 def run_cmd(
     quest: int = typer.Argument(..., help="Quest number (e.g. 3)"),
     year: int = typer.Option(datetime.now().year, "--year", "-y", help="Event year"),
-    part: int = typer.Option(1, "--part", "-p", help="Part number to execute"),
+    part: Literal[1, 2, 3] = typer.Option(
+        1, "--part", "-p", help="Part number to execute"
+    ),
 ) -> None:
     """Execute the solution for a given quest and part using input data."""
 
@@ -171,7 +174,9 @@ def run_cmd(
 def test_cmd(
     quest: int = typer.Argument(..., help="Quest number (e.g. 3)"),
     year: int = typer.Option(datetime.now().year, "--year", "-y", help="Event year"),
-    part: int = typer.Option(1, "--part", "-p", help="Part number to test"),
+    part: Literal[1, 2, 3] = typer.Option(
+        1, "--part", "-p", help="Part number to test"
+    ),
 ) -> None:
     """Run the solution for a given quest and part using test data."""
 
@@ -192,7 +197,9 @@ def test_cmd(
 def push_cmd(
     quest: int = typer.Argument(..., help="Quest number (e.g. 3)"),
     year: int = typer.Option(datetime.now().year, "--year", "-y", help="Event year"),
-    part: int = typer.Option(1, "--part", "-p", help="Part number to test"),
+    part: Literal[1, 2, 3] = typer.Option(
+        1, "--part", "-p", help="Part number to submit"
+    ),
 ) -> None:
     """Submit the solution for a given quest and part."""
 
@@ -209,10 +216,10 @@ def push_cmd(
     if result.get("correct"):
         typer.echo(
             f"✅ Correct answer for Quest {quest} Part {part}!"
-            f"\n🏅 - Global place: {result.get('globalPlace', '?')}"
-            f"\n🏅 - Global score: {result.get('globalScore', '?')}"
-            f"\n⏱️ - Global time: {utils.format_duration(result.get('globalTime'))}"
-            f"\n⏱️ - Local time: {utils.format_duration(result.get('localTime'))}"
+            f"\n - Global place: {result.get('globalPlace', '?')}"
+            f"\n - Global score: {result.get('globalScore', '?')}"
+            f"\n - Global time: {utils.format_duration(result.get('globalTime'))}"
+            f"\n - Local time: {utils.format_duration(result.get('localTime'))}"
         )
 
         # Download the next part (if the quest is not ended)

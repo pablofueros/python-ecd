@@ -16,13 +16,17 @@
 
 </div>
 
+## 💛 Acknowledgements
+
+This tool relies on the [Everybody Codes Data](https://github.com/wimglenn/everybody-codes-data) library. Shout out to [@wimglenn](https://github.com/wimglenn)!
+
 ## 📋 Features
 
 - Initialize workspace for [Everybody Codes](https://everybody.codes) puzzles
 - Download puzzle inputs automatically
 - Manage session tokens securely
 - Run solutions with both test and real input data
-- Automatic project structure creation
+- Submit solutions and check if they are correct
 
 ## 📦 Installation
 
@@ -59,9 +63,12 @@ ecd init everybody-codes-solutions
 
 Note that if the directory does not exist, it will be created.
 
+Options:
+- `--force`, `-f`: Overwrite existing files
+
 ### Set Session Token
 
-Configure your session token for accessing puzzle inputs:
+Configure your [session token](https://github.com/wimglenn/everybody-codes-data?tab=readme-ov-file#auth) for accessing puzzle inputs:
 
 ```bash
 ecd set-token <TOKEN>
@@ -71,7 +78,7 @@ Note that is not necessary if you set it during initialization.
 
 ### Download Puzzle Input
 
-Download the input for a specific puzzle:
+Download the input for all available part
 
 ```bash
 ecd pull <QUEST_NUMBER> [OPTIONS]
@@ -79,22 +86,9 @@ ecd pull <QUEST_NUMBER> [OPTIONS]
 
 Options:
 - `--year`, `-y`: Event year (default: actual)
-- `--part`, `-p`: Puzzle part (default: 1)
 - `--force`, `-f`: Overwrite existing files
 
 This command will create the necessary dirs and files if they do not exist.
-
-### Run Solutions
-
-Execute your solution for a specific puzzle:
-
-```bash
-ecd run <QUEST_NUMBER> [OPTIONS]
-```
-
-Options:
-- `--year`: Event year (default: actual)
-- `--part`: Part number to execute (default: 1)
 
 ### Test Solutions
 
@@ -108,6 +102,18 @@ Options:
 - `--year`: Event year (default: actual)
 - `--part`: Part number to test (default: 1)
 
+### Run Solutions
+
+Execute your solution for a specific puzzle:
+
+```bash
+ecd run <QUEST_NUMBER> [OPTIONS]
+```
+
+Options:
+- `--year`: Event year (default: actual)
+- `--part`: Part number to execute (default: 1)
+
 ### Submit Solutions
 
 Submit your solution for a specific puzzle:
@@ -119,6 +125,8 @@ ecd push <QUEST_NUMBER> [OPTIONS]
 Options:
 - `--year`: Event year (default: actual)
 - `--part`: Part number to test (default: 1)
+
+Note that next available part (if exists) will be pulled automatically if the result is correct.
 
 ### Display Version
 

@@ -4,7 +4,7 @@ import io
 import subprocess
 from datetime import timedelta
 from pathlib import Path
-from typing import Literal, cast
+from typing import Literal
 
 from ecd import get_inputs, submit
 
@@ -121,7 +121,7 @@ def execute_part(
     base_dir: Path,
     quest: int,
     year: int,
-    part: int,
+    part: Literal[1, 2, 3],
     mode: str = "input",
 ) -> str:
     """
@@ -176,7 +176,7 @@ def push_solution(
     base_dir: Path,
     quest: int,
     year: int,
-    part: int,
+    part: Literal[1, 2, 3],
 ) -> dict:
     """
     Submit the solution for a given quest and part using input data.
@@ -220,7 +220,7 @@ def push_solution(
         result = submit(
             quest=quest,
             event=year,
-            part=cast(Literal[1, 2, 3], part),
+            part=part,
             answer=str(answer),
             quiet=True,
         )
