@@ -126,15 +126,15 @@ wheels = [
 
 [[package]]
 name = "everybody-codes-data"
-version = "0.3"
+version = "0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0e/be/7969fbdcc51349f5a09023f908032b63a983a0cb4f405db5e7fcc5bd29e1/everybody_codes_data-0.3.tar.gz", hash = "sha256:85585f003e419ba6d36caa61580abbe8c31201dd6411f919ecb3347a386f3f3e", size = 8245, upload-time = "2025-11-07T01:45:35.718Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/76/01e9120def229aa15c37ed043e4ff7373624904f06c336784bd9663d8c27/everybody_codes_data-0.4.tar.gz", hash = "sha256:04ef12bb063c26e22f714e49d6875bdad73c66d612cd88cc2bbba9394cf40a1c", size = 8800, upload-time = "2025-11-10T00:50:29.097Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7b/47/b486bc145106205111ca46f33f7a6a46e89cd3c0929a699b7ff7290da6f6/everybody_codes_data-0.3-py3-none-any.whl", hash = "sha256:8581930fd46fd0824ed63f9589b23a0816f4fba733b8854a45fc040cef048ab3", size = 7232, upload-time = "2025-11-07T01:45:34.739Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/7a/121f67d52cd6558d57cec0191f606269ecc51d8582a79cd979dbf4b9f312/everybody_codes_data-0.4-py3-none-any.whl", hash = "sha256:ab61731e3589eb05f15353d71588ccac49c542410751ef6129b099a3cbb1b198", size = 7431, upload-time = "2025-11-10T00:50:27.972Z" },
 ]
 
 [[package]]
@@ -177,11 +177,21 @@ wheels = [
 ]
 
 [[package]]
+name = "python-dotenv"
+version = "1.2.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f0/26/19cadc79a718c5edbec86fd4919a6b6d3f681039a2f6d66d14be94e75fb9/python_dotenv-1.2.1.tar.gz", hash = "sha256:42667e897e16ab0d66954af0e60a9caa94f0fd4ecf3aaf6d2d260eec1aa36ad6", size = 44221, upload-time = "2025-10-26T15:12:10.434Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/14/1b/a298b06749107c305e1fe0f814c6c74aea7b2f1e10989cb30f544a1b3253/python_dotenv-1.2.1-py3-none-any.whl", hash = "sha256:b81ee9561e9ca4004139c6cbba3a238c32b03e4894671e181b671e8cb8425d61", size = 21230, upload-time = "2025-10-26T15:12:09.109Z" },
+]
+
+[[package]]
 name = "python-ecd"
 version = "0.2.1"
 source = { editable = "." }
 dependencies = [
     { name = "everybody-codes-data" },
+    { name = "python-dotenv" },
     { name = "typer" },
 ]
 
@@ -192,7 +202,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "everybody-codes-data", specifier = "==0.3" },
+    { name = "everybody-codes-data", specifier = "==0.4" },
+    { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "typer", specifier = ">=0.20.0" },
 ]
 

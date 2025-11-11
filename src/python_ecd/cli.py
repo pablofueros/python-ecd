@@ -67,7 +67,7 @@ def init_cmd(
         typer.echo("📝 README.md created")
 
     # 5. Save session token if provided
-    token_path = utils.TOKEN_PATH
+    token_path = utils.ENV_PATH
     if not token:
         typer.echo("⚠️ No session token provided (set it later with 'ecd set-token')")
     elif token_path.exists() and not force:
@@ -80,10 +80,15 @@ def init_cmd(
 @app.command("set-token")
 def set_token_cmd(
     token: str = typer.Argument(..., help="Session token to access puzzle inputs"),
+    force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing token"),
 ) -> None:
     """Set the session token to operate with Everybody Codes webpage."""
-    utils.set_token(token)
-    typer.echo("🔑 Session token saved to /home/.config/ecd/token")
+    token_path = utils.ENV_PATH
+    if token_path.exists() and not force:
+        typer.echo("⚠️ Session token file already exists (use --force to overwrite).")
+    else:
+        utils.set_token(token, force)
+        typer.echo(f"🔑 Session token saved to {token_path}")
 
 
 @app.command("pull")
