@@ -126,15 +126,15 @@ wheels = [
 
 [[package]]
 name = "everybody-codes-data"
-version = "0.4"
+version = "0.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/53/76/01e9120def229aa15c37ed043e4ff7373624904f06c336784bd9663d8c27/everybody_codes_data-0.4.tar.gz", hash = "sha256:04ef12bb063c26e22f714e49d6875bdad73c66d612cd88cc2bbba9394cf40a1c", size = 8800, upload-time = "2025-11-10T00:50:29.097Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7a/8e/441d9515a3bfd29f270ca3b35fd92c3a301f58f9a2273fa28cad3de3d933/everybody_codes_data-0.5.tar.gz", hash = "sha256:e2a0933f1993ee12e0d9b7404ae274795b51b69c0c4084458e6e91ebdc7584af", size = 8827, upload-time = "2025-11-29T00:55:34.652Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f7/7a/121f67d52cd6558d57cec0191f606269ecc51d8582a79cd979dbf4b9f312/everybody_codes_data-0.4-py3-none-any.whl", hash = "sha256:ab61731e3589eb05f15353d71588ccac49c542410751ef6129b099a3cbb1b198", size = 7431, upload-time = "2025-11-10T00:50:27.972Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/ea/bbd52d232a3de8274a8042ae84963850a9f4d056c96920fe363d54ce3afe/everybody_codes_data-0.5-py3-none-any.whl", hash = "sha256:d676aa8896341d623be13b22845baa66bbc20abb6bba6bb57f528653a2477e38", size = 7423, upload-time = "2025-11-29T00:55:31.195Z" },
 ]
 
 [[package]]
@@ -202,7 +202,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "everybody-codes-data", specifier = "==0.4" },
+    { name = "everybody-codes-data", specifier = "==0.5" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "typer", specifier = ">=0.20.0" },
 ]

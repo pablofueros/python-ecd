@@ -10,7 +10,7 @@ classifiers = [
 authors = [{ name = "Pablo Garcia", email = "pablofueros@gmail.com" }]
 requires-python = ">=3.13"
 dependencies = [
-    "everybody-codes-data==0.4",
+    "everybody-codes-data==0.5",
     "python-dotenv>=1.2.1",
     "typer>=0.20.0",
 ]
