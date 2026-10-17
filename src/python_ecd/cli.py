@@ -1,12 +1,22 @@
-from datetime import datetime
 from typing import Literal
 
 import typer
 
 from . import utils
+from .target import ChallengeTarget
 from .version import __version__
 
 app = typer.Typer(name="python-ecd", help="python-ecd: CLI tool for Everybody Codes")
+
+
+def _resolve_target(quest: int, year: int | None, story: int | None) -> ChallengeTarget:
+    if (year is None) == (story is None):
+        typer.echo("❌ Error: Select exactly one target using --year or --story.")
+        raise typer.Exit(2)
+    if year is not None:
+        return ChallengeTarget(category="event", edition=year, quest=quest)
+    assert story is not None
+    return ChallengeTarget(category="story", edition=story, quest=quest)
 
 
 def _display_version(value: bool) -> None:
@@ -83,12 +93,14 @@ def set_token_cmd(
 @app.command("pull")
 def pull_cmd(
     quest: int = typer.Argument(..., help="Quest number (e.g. 3)"),
-    year: int = typer.Option(datetime.now().year, "--year", "-y", help="Event year"),
+    year: int | None = typer.Option(None, "--year", "-y", help="Event year"),
+    story: int | None = typer.Option(None, "--story", "-s", help="Story number"),
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing files"),
 ) -> None:
     """Download available input data for a given quest and create local structure."""
 
-    # 0. Locate base directory
+    # 0. Resolve challenge and locate base directory
+    target = _resolve_target(quest, year, story)
     base_dir = utils.find_base()
 
     # 1. Ensure session token exists
@@ -100,13 +112,13 @@ def pull_cmd(
 
     # 2. Download the available input
     try:
-        input_dict = utils.download_input(year, quest)
+        input_dict = utils.download_input(target)
     except Exception as e:
         typer.echo(f"❌ Failed to fetch input: {e}")
         raise typer.Exit(1)
 
     # 3. Prepare directory structure
-    quest_dir = utils.create_quest_dir(base_dir, year, quest)
+    quest_dir = utils.create_quest_dir(base_dir, target)
 
     # 4. Create solution.py if missing
     solution_file = quest_dir / "solution.py"
@@ -127,7 +139,7 @@ def pull_cmd(
             )
         else:
             input_file.write_text(input, encoding="utf-8")
-            typer.echo(f"📥 Saved input for quest {quest:02d} part {part}.")
+            typer.echo(f"📥 Saved input for {target.label} Part {part}.")
 
         # 6. Ensure empty test file exists
         test_file = quest_dir / f"test/test_p{part}.txt"
@@ -138,66 +150,72 @@ def pull_cmd(
         else:
             test_file.touch(exist_ok=True)
 
-    typer.echo(f"✅ Quest {quest:02d} ready at {solution_file.relative_to(base_dir)}")
+    typer.echo(f"✅ {target.label} ready at {solution_file.relative_to(base_dir)}")
 
 
 @app.command("run")
 def run_cmd(
     quest: int = typer.Argument(..., help="Quest number (e.g. 3)"),
-    year: int = typer.Option(datetime.now().year, "--year", "-y", help="Event year"),
+    year: int | None = typer.Option(None, "--year", "-y", help="Event year"),
+    story: int | None = typer.Option(None, "--story", "-s", help="Story number"),
     part: Literal[1, 2, 3] = typer.Option(
         1, "--part", "-p", help="Part number to execute"
     ),
 ) -> None:
     """Execute the solution for a given quest and part using input data."""
 
-    # 0. Locate base directory
+    # 0. Resolve challenge and locate base directory
+    target = _resolve_target(quest, year, story)
     base_dir = utils.find_base()
 
     # 1. Execute the solution
     try:
-        result = utils.execute_part(base_dir, quest, year, part, mode="input")
+        result = utils.execute_part(base_dir, target, part, mode="input")
     except Exception as e:
-        typer.echo(f"❌ Failed to execute Quest {quest} Part {part}: {e}")
+        typer.echo(f"❌ Failed to execute {target.label} Part {part}: {e}")
         raise typer.Exit(1)
 
-    typer.echo(f"✅ Result for Quest {quest} Part {part}:\n{result}")
+    typer.echo(f"✅ Result for {target.label} Part {part}:\n{result}")
 
 
 @app.command("test")
 def test_cmd(
     quest: int = typer.Argument(..., help="Quest number (e.g. 3)"),
-    year: int = typer.Option(datetime.now().year, "--year", "-y", help="Event year"),
+    year: int | None = typer.Option(None, "--year", "-y", help="Event year"),
+    story: int | None = typer.Option(None, "--story", "-s", help="Story number"),
     part: Literal[1, 2, 3] = typer.Option(
         1, "--part", "-p", help="Part number to test"
     ),
 ) -> None:
     """Run the solution for a given quest and part using test data."""
 
-    # 0. Locate base directory
+    # 0. Resolve challenge and locate base directory
+    target = _resolve_target(quest, year, story)
     base_dir = utils.find_base()
 
     # 1. Execute the solution in test mode
     try:
-        result = utils.execute_part(base_dir, quest, year, part, mode="test")
+        result = utils.execute_part(base_dir, target, part, mode="test")
     except Exception as e:
-        typer.echo(f"❌ Failed to run test for Quest {quest} Part {part}: {e}")
+        typer.echo(f"❌ Failed to run test for {target.label} Part {part}: {e}")
         raise typer.Exit(1)
 
-    typer.echo(f"🧪 Test result for Quest {quest} Part {part}:\n{result}")
+    typer.echo(f"🧪 Test result for {target.label} Part {part}:\n{result}")
 
 
 @app.command("push")
 def push_cmd(
     quest: int = typer.Argument(..., help="Quest number (e.g. 3)"),
-    year: int = typer.Option(datetime.now().year, "--year", "-y", help="Event year"),
+    year: int | None = typer.Option(None, "--year", "-y", help="Event year"),
+    story: int | None = typer.Option(None, "--story", "-s", help="Story number"),
     part: Literal[1, 2, 3] = typer.Option(
         1, "--part", "-p", help="Part number to submit"
     ),
 ) -> None:
     """Submit the solution for a given quest and part."""
 
-    # 0. Locate base directory
+    # 0. Resolve challenge and locate base directory
+    target = _resolve_target(quest, year, story)
     base_dir = utils.find_base()
 
     # Ensure session token exists
@@ -209,14 +227,14 @@ def push_cmd(
 
     # 1. Submit the solution
     try:
-        result = utils.push_solution(base_dir, quest, year, part)
+        result = utils.push_solution(base_dir, target, part)
     except Exception as e:
-        typer.echo(f"❌ Failed to submit solution for Quest {quest} Part {part}: {e}")
+        typer.echo(f"❌ Failed to submit solution for {target.label} Part {part}: {e}")
         raise typer.Exit(1)
 
     if result.get("correct"):
         typer.echo(
-            f"✅ Correct answer for Quest {quest} Part {part}!"
+            f"✅ Correct answer for {target.label} Part {part}!"
             f"\n - Global place: {result.get('globalPlace', '?')}"
             f"\n - Global score: {result.get('globalScore', '?')}"
             f"\n - Global time: {utils.format_duration(result.get('globalTime'))}"
@@ -231,13 +249,13 @@ def push_cmd(
 
         # Download the input for the given part
         try:
-            input_dict = utils.download_input(year, quest)
+            input_dict = utils.download_input(target)
         except Exception as e:
             typer.echo(f"❌ Failed to fetch input: {e}")
             raise typer.Exit(1)
 
         # Prepare directory structure
-        quest_dir = utils.create_quest_dir(base_dir, year, quest)
+        quest_dir = utils.create_quest_dir(base_dir, target)
 
         # 5. Save available inputs
         input_file = quest_dir / f"input/input_p{part + 1}.txt"
@@ -247,7 +265,7 @@ def push_cmd(
             )
         else:
             input_file.write_text(input_dict[str(part + 1)], encoding="utf-8")
-            typer.echo(f"📥 Saved input for quest {quest:02d} part {part + 1}.")
+            typer.echo(f"📥 Saved input for {target.label} Part {part + 1}.")
 
         # 6. Ensure empty test file exists
         test_file = quest_dir / f"test/test_p{part + 1}.txt"
@@ -260,7 +278,7 @@ def push_cmd(
 
     else:
         typer.echo(
-            f"❌ Incorrect answer for Quest {quest} Part {part}:"
+            f"❌ Incorrect answer for {target.label} Part {part}:"
             f"\n - lengthCorrect={result.get('lengthCorrect')}, "
             f"\n - firstCorrect={result.get('firstCorrect')}"
         )

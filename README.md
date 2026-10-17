@@ -24,6 +24,7 @@ This tool relies on the [Everybody Codes Data](https://github.com/wimglenn/every
 ## 📋 Features
 
 - Initialize workspace for [Everybody Codes](https://everybody.codes) puzzles
+- Keep event and story solutions in separate directory trees
 - Download puzzle inputs automatically
 - Configure authentication without exposing session tokens in shell history
 - Run solutions with both test and real input data
@@ -84,53 +85,63 @@ environment variable instead; it takes precedence over the file.
 
 ### Download Puzzle Input
 
-Download the input for all available part
+Download the input for all available parts. Select exactly one event or story:
 
 ```bash
-ecd pull <QUEST_NUMBER> [OPTIONS]
+ecd pull <QUEST_NUMBER> --year <EVENT_YEAR>
+ecd pull <QUEST_NUMBER> --story <STORY_NUMBER>
 ```
 
 Options:
-- `--year`, `-y`: Event year (default: actual)
+- `--year`, `-y`: Event year
+- `--story`, `-s`: Story number
 - `--force`, `-f`: Overwrite existing files
 
-This command will create the necessary dirs and files if they do not exist.
+Exactly one of `--year` or `--story` is required. Event quests are stored under
+`events/<year>/quest_<id>/`; story quests use `stories/<story>/quest_<id>/`.
+This command creates the necessary directories and files if they do not exist.
 
 ### Test Solutions
 
 Run your solution using test data:
 
 ```bash
-ecd test <QUEST_NUMBER> [OPTIONS]
+ecd test <QUEST_NUMBER> --year <EVENT_YEAR> [OPTIONS]
+# or: ecd test <QUEST_NUMBER> --story <STORY_NUMBER> [OPTIONS]
 ```
 
 Options:
-- `--year`: Event year (default: actual)
-- `--part`: Part number to test (default: 1)
+- `--year`, `-y`: Event year (mutually exclusive with `--story`)
+- `--story`, `-s`: Story number (mutually exclusive with `--year`)
+- `--part`, `-p`: Part number to test (default: 1)
 
 ### Run Solutions
 
 Execute your solution for a specific puzzle:
 
 ```bash
-ecd run <QUEST_NUMBER> [OPTIONS]
+ecd run <QUEST_NUMBER> --year <EVENT_YEAR> [OPTIONS]
+# or: ecd run <QUEST_NUMBER> --story <STORY_NUMBER> [OPTIONS]
 ```
 
 Options:
-- `--year`: Event year (default: actual)
-- `--part`: Part number to execute (default: 1)
+- `--year`, `-y`: Event year (mutually exclusive with `--story`)
+- `--story`, `-s`: Story number (mutually exclusive with `--year`)
+- `--part`, `-p`: Part number to execute (default: 1)
 
 ### Submit Solutions
 
 Submit your solution for a specific puzzle:
 
 ```bash
-ecd push <QUEST_NUMBER> [OPTIONS]
+ecd push <QUEST_NUMBER> --year <EVENT_YEAR> [OPTIONS]
+# or: ecd push <QUEST_NUMBER> --story <STORY_NUMBER> [OPTIONS]
 ```
 
 Options:
-- `--year`: Event year (default: actual)
-- `--part`: Part number to test (default: 1)
+- `--year`, `-y`: Event year (mutually exclusive with `--story`)
+- `--story`, `-s`: Story number (mutually exclusive with `--year`)
+- `--part`, `-p`: Part number to submit (default: 1)
 
 Note that next available part (if exists) will be pulled automatically if the result is correct.
 

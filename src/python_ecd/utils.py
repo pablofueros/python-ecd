@@ -7,6 +7,8 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Literal
 
+from .target import ChallengeTarget
+
 
 def _read_template(template_name: str) -> str:
     """
@@ -24,6 +26,7 @@ def create_base(base_dir_name: str) -> Path:
     """
     base_dir = Path(base_dir_name).resolve()
     (base_dir / "events").mkdir(parents=True, exist_ok=True)
+    (base_dir / "stories").mkdir(parents=True, exist_ok=True)
     return base_dir
 
 
@@ -33,16 +36,16 @@ def find_base() -> Path:
     """
     current_dir = Path.cwd()
     for parent in [current_dir] + list(current_dir.parents):
-        if (parent / "events").exists():
+        if (parent / "events").is_dir() or (parent / "stories").is_dir():
             return parent
     raise FileNotFoundError("Base directory not found. Please run 'ecd init'.")
 
 
-def create_quest_dir(base_dir: Path, year: int, quest: int) -> Path:
+def create_quest_dir(base_dir: Path, target: ChallengeTarget) -> Path:
     """
-    Create directory structure for a given quest/year.
+    Create the directory structure for an event or story quest.
     """
-    quest_dir = base_dir / "events" / str(year) / f"quest_{quest:02d}"
+    quest_dir = base_dir / target.relative_dir
     quest_dir.mkdir(parents=True, exist_ok=True)
     (quest_dir / "input").mkdir(exist_ok=True)
     (quest_dir / "test").mkdir(exist_ok=True)
@@ -120,20 +123,19 @@ def has_token() -> bool:
     return bool(TOKEN_PATH.read_text(encoding="utf-8").split())
 
 
-def download_input(year: int, quest: int) -> dict[str, str]:
+def download_input(target: ChallengeTarget) -> dict[str, str]:
     """
     Fetch the available input text for a specific quest.
     """
     from ecd import get_inputs
 
     with contextlib.redirect_stderr(io.StringIO()):
-        return get_inputs(quest=quest, event=year)
+        return get_inputs(quest=target.quest, event=target.api_event)
 
 
 def execute_part(
     base_dir: Path,
-    quest: int,
-    year: int,
+    target: ChallengeTarget,
     part: Literal[1, 2, 3],
     mode: str = "input",
 ) -> str:
@@ -142,6 +144,7 @@ def execute_part(
 
     Args:
         base_dir: Base directory
+        target: Event or story quest to execute
         part: Part number (1, 2, or 3)
         mode: Either "input" or "test"
 
@@ -149,7 +152,7 @@ def execute_part(
         The string result produced by part_{part}(data).
     """
 
-    quest_dir = base_dir / "events" / str(year) / f"quest_{quest:02d}"
+    quest_dir = base_dir / target.relative_dir
     solution_path = quest_dir / "solution.py"
     data_path = quest_dir / mode / f"{mode}_p{part}.txt"
 
@@ -187,8 +190,7 @@ def execute_part(
 
 def push_solution(
     base_dir: Path,
-    quest: int,
-    year: int,
+    target: ChallengeTarget,
     part: Literal[1, 2, 3],
 ) -> dict:
     """
@@ -199,7 +201,7 @@ def push_solution(
     """
     from ecd import submit
 
-    quest_dir = base_dir / "events" / str(year) / f"quest_{quest:02d}"
+    quest_dir = base_dir / target.relative_dir
     solution_path = quest_dir / "solution.py"
     if not solution_path.exists():
         raise FileNotFoundError(
@@ -221,7 +223,7 @@ def push_solution(
         raise TypeError(f"No callable '{func_name}' defined in solution.py")
 
     # Fetch input data
-    input_dict = download_input(year=year, quest=quest)
+    input_dict = download_input(target)
     input_text = input_dict[str(part)]
 
     # Run the function
@@ -232,8 +234,8 @@ def push_solution(
     # Submit the answer
     with contextlib.redirect_stderr(io.StringIO()):
         result = submit(
-            quest=quest,
-            event=year,
+            quest=target.quest,
+            event=target.api_event,
             part=part,
             answer=str(answer),
             quiet=True,

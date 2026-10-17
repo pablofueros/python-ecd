@@ -5,6 +5,9 @@ from pathlib import Path
 import pytest
 
 from python_ecd import utils
+from python_ecd.target import ChallengeTarget
+
+EVENT_TARGET = ChallengeTarget(category="event", edition=2025, quest=1)
 
 
 def write_solution(base_dir: Path, source: str, mode: str = "input") -> None:
@@ -27,6 +30,14 @@ def test_find_base_fails_outside_workspace(tmp_path, monkeypatch):
 
     with pytest.raises(FileNotFoundError, match="run 'ecd init'"):
         utils.find_base()
+
+
+def test_find_base_recognizes_story_only_workspace(tmp_path, monkeypatch):
+    nested = tmp_path / "stories/3/quest_01"
+    nested.mkdir(parents=True)
+    monkeypatch.chdir(nested)
+
+    assert utils.find_base() == tmp_path
 
 
 def test_set_token_creates_private_global_file(tmp_path, monkeypatch):
@@ -62,14 +73,24 @@ def test_has_token_reads_global_file(tmp_path, monkeypatch):
 def test_execute_part_loads_solution_and_data(tmp_path):
     write_solution(tmp_path, "def part_1(data):\n    return data.upper()\n")
 
-    assert utils.execute_part(tmp_path, 1, 2025, 1) == "ABC"
+    assert utils.execute_part(tmp_path, EVENT_TARGET, 1) == "ABC"
 
 
 def test_execute_part_rejects_missing_callable(tmp_path):
     write_solution(tmp_path, "part_1 = 'not callable'\n")
 
     with pytest.raises(TypeError, match="No callable 'part_1'"):
-        utils.execute_part(tmp_path, 1, 2025, 1)
+        utils.execute_part(tmp_path, EVENT_TARGET, 1)
+
+
+def test_challenge_target_builds_category_paths():
+    event = ChallengeTarget(category="event", edition=2025, quest=1)
+    story = ChallengeTarget(category="story", edition=3, quest=2)
+
+    assert event.relative_dir == Path("events/2025/quest_01")
+    assert event.label == "Event 2025 Quest 1"
+    assert story.relative_dir == Path("stories/3/quest_02")
+    assert story.label == "Story 3 Quest 2"
 
 
 @pytest.mark.parametrize(

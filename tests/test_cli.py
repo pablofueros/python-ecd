@@ -31,6 +31,7 @@ def test_init_creates_workspace_from_packaged_templates(tmp_path, monkeypatch):
     assert result.exit_code == 0, result.output
     workspace = tmp_path / "workspace"
     assert (workspace / "events").is_dir()
+    assert (workspace / "stories").is_dir()
     assert ".env" in (workspace / ".gitignore").read_text()
     assert "Everybody Codes Solutions" in (workspace / "README.md").read_text()
     assert not (workspace / ".env").exists()
@@ -129,10 +130,29 @@ def test_pull_without_token_never_calls_network(tmp_path, monkeypatch):
         lambda *args: pytest.fail("network adapter must not be called"),
     )
 
-    result = invoke_in_workspace(tmp_path, monkeypatch, ["pull", "1"])
+    result = invoke_in_workspace(tmp_path, monkeypatch, ["pull", "1", "--year", "2025"])
 
     assert result.exit_code == 1
     assert "Session token not found" in result.output
+
+
+@pytest.mark.parametrize(
+    ("command", "selectors"),
+    [
+        (command, selectors)
+        for command in ("pull", "run", "test", "push")
+        for selectors in ([], ["--year", "2025", "--story", "3"])
+    ],
+)
+def test_challenge_commands_require_exactly_one_target(
+    tmp_path, monkeypatch, command, selectors
+):
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, [command, "1", *selectors])
+
+    assert result.exit_code == 2
+    assert "Select exactly one target" in result.output
 
 
 def test_pull_from_nested_directory_reads_global_token(tmp_path, monkeypatch):
@@ -145,17 +165,17 @@ def test_pull_from_nested_directory_reads_global_token(tmp_path, monkeypatch):
     monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
     monkeypatch.chdir(nested)
     monkeypatch.delenv("ECD_TOKEN", raising=False)
-    monkeypatch.setattr(utils, "download_input", lambda year, quest: {})
+    monkeypatch.setattr(utils, "download_input", lambda target: {})
 
     result = runner.invoke(app, ["pull", "1", "--year", "2025"])
 
     assert result.exit_code == 0, result.output
-    assert "Quest 01 ready" in result.output
+    assert "Event 2025 Quest 1 ready" in result.output
 
 
 def test_pull_uses_adapter_double_and_creates_quest(tmp_path, monkeypatch):
     monkeypatch.setattr(utils, "has_token", lambda: True)
-    monkeypatch.setattr(utils, "download_input", lambda year, quest: {"1": "example"})
+    monkeypatch.setattr(utils, "download_input", lambda target: {"1": "example"})
 
     result = invoke_in_workspace(tmp_path, monkeypatch, ["pull", "1", "--year", "2025"])
 
@@ -166,11 +186,31 @@ def test_pull_uses_adapter_double_and_creates_quest(tmp_path, monkeypatch):
     assert "def part_1" in (quest / "solution.py").read_text()
 
 
+def test_pull_story_uses_story_directory_and_api_identifier(tmp_path, monkeypatch):
+    targets = []
+    monkeypatch.setattr(utils, "has_token", lambda: True)
+
+    def download(target):
+        targets.append(target)
+        return {"1": "story-input"}
+
+    monkeypatch.setattr(utils, "download_input", download)
+
+    result = invoke_in_workspace(tmp_path, monkeypatch, ["pull", "2", "--story", "3"])
+
+    assert result.exit_code == 0, result.output
+    quest = tmp_path / "stories/3/quest_02"
+    assert (quest / "input/input_p1.txt").read_text() == "story-input"
+    assert targets[0].category == "story"
+    assert targets[0].api_event == 3
+    assert targets[0].quest == 2
+
+
 @pytest.mark.parametrize(
     ("command", "mode", "expected"),
     [
-        ("run", "input", "Result for Quest 1 Part 1:\nABC"),
-        ("test", "test", "Test result for Quest 1 Part 1:\nABC"),
+        ("run", "input", "Result for Event 2025 Quest 1 Part 1:\nABC"),
+        ("test", "test", "Test result for Event 2025 Quest 1 Part 1:\nABC"),
     ],
 )
 def test_execute_commands_use_expected_data(
@@ -191,11 +231,11 @@ def test_execute_commands_use_expected_data(
 def test_pull_reports_adapter_error_without_traceback(tmp_path, monkeypatch):
     monkeypatch.setattr(utils, "has_token", lambda: True)
 
-    def fail_download(year, quest):
+    def fail_download(target):
         raise RuntimeError("service unavailable")
 
     monkeypatch.setattr(utils, "download_input", fail_download)
-    result = invoke_in_workspace(tmp_path, monkeypatch, ["pull", "1"])
+    result = invoke_in_workspace(tmp_path, monkeypatch, ["pull", "1", "--year", "2025"])
 
     assert result.exit_code == 1
     assert "Failed to fetch input: service unavailable" in result.output
@@ -224,7 +264,7 @@ def test_push_correct_answer_downloads_next_part(tmp_path, monkeypatch):
             "localTime": 2000,
         },
     )
-    monkeypatch.setattr(utils, "download_input", lambda year, quest: {"2": "next-part"})
+    monkeypatch.setattr(utils, "download_input", lambda target: {"2": "next-part"})
 
     result = invoke_in_workspace(
         tmp_path,
