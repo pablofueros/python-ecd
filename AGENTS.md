@@ -23,19 +23,47 @@
 
 ## Git
 
-- Trabaja en ramas temporales creadas desde `develop`; `main` contiene la
-  versión estable.
-- Usa Conventional Commits. Integra mediante pull requests con merge commit,
-  sin squash ni rebase, manteniendo el título estándar del merge y el cuerpo
-  vacío.
-- No hagas commit, push, merge ni publiques versiones sin autorización
-  explícita.
-- Tras cualquier cambio ejecuta `uv run ruff format --check .`, `make lint` y
-  `make test`.
-- Si modificas `.github/workflows/`, valídalos con `act` cuando esté disponible
-  e informa de las limitaciones de la ejecución local.
-- Si cambias dependencias, actualiza `uv.lock` y ejecuta `uv lock --check`. Los
-  cambios de dependencias de producción deben tratarse por separado.
+- Todas las pull requests se integran mediante merge commit. No uses squash ni rebase.
+- `main` contiene la versión estable y demostrable; `develop` integra los siguientes cambios.
+- Las ramas de trabajo parten normalmente de `develop`. Los hotfix parten de `main` y sus cambios deben incorporarse después a `develop`.
+- El merge commit debe mantener el título estándar `Merge pull request #...` y tener el cuerpo vacío. No repitas un título `feat:` o `fix:` en su cuerpo: Release Please lo contabilizaría además de los commits originales y duplicaría el changelog.
+- Al fusionar una rama temporal, elimina la rama remota con `gh pr merge NUMERO --merge --delete-branch --subject "Merge pull request #NUMERO from propietario/rama" --body ""`.
+- Tras verificar la fusión, actualiza la rama de destino y elimina la rama local temporal con `git branch -d RAMA`. No uses `git branch -D` sin autorización explícita.
+- Ejecuta `git fetch --prune` para retirar referencias remotas obsoletas.
+- No elimines nunca las ramas permanentes `main` o `develop`; no uses `--delete-branch` cuando cualquiera de ellas sea la rama origen de la pull request.
+
+## Comprobaciones
+
+- Usa `uv run` para ejecutar Python en el entorno del proyecto.
+- Tras cambios, ejecuta `make format`, `make lint` y `make test`.
+- Tras modificar un workflow de GitHub Actions, si `act` está instalado, ejecuta localmente el workflow afectado y comprueba que finaliza correctamente.
+- Para cambios de ejemplos, ejecuta una comprobación específica del ejemplo,
+  además de las pruebas pertinentes.
+- Si una comprobación no puede ejecutarse, explica cuál faltó y por qué. No
+  presentes como terminada una subfase cuyas pruebas relevantes fallen.
+
+## Releases
+
+- Usa Conventional Commits: Release Please calcula las versiones y genera `CHANGELOG.md` a partir de ellos.
+- Las versiones estables se integran mediante pull request de `develop` hacia `main`.
+- Cada push a `main` ejecuta Release Please. La pull request de release se fusiona mediante merge commit con el cuerpo vacío solo cuando se quiere publicar una versión estable.
+- Sigue SemVer: `fix:` incrementa el parche, `feat:` incrementa la versión menor
+  y `!` o `BREAKING CHANGE:` identifican un cambio incompatible que incrementa
+  la versión mayor.
+- El tag `X.Y.Z` es la fuente de verdad para la versión de la aplicación; los metadatos técnicos no se sincronizan con las releases.
+- No edites manualmente tags, GitHub Releases o entradas generadas del changelog salvo que la tarea solicite corregir o inicializar la automatización.
+- No fusiones pull requests de release ni publiques versiones sin autorización explícita.
+- Después de una release, hotfix u otro cambio exclusivo de `main`, incorpora en `develop` los cambios reales de archivos. Un merge commit adicional sin diferencias de contenido no requiere sincronización por sí solo.
+
+## Dependencias
+
+- No añadas dependencias de producción sin consultarlo.
+- Las dependencias directas nuevas o modificadas, incluidas las de desarrollo,
+  deben declarar un límite superior anterior a la siguiente versión mayor.
+  Si hace falta una excepción, acuerda y documenta el motivo. Las restricciones
+  existentes no se cambian fuera de una subfase de dependencias acordada.
+- Cuando cambies dependencias, actualiza también `uv.lock` y comprueba que
+  sigue correspondiendo a `pyproject.toml`.
 
 ## Pruebas y seguridad
 
