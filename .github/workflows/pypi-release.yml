@@ -36,7 +36,7 @@ jobs:
           RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           version=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
-          tag="v${version}"
+          tag="${version}"
 
           if ! git tag --points-at "$RELEASE_SHA" | grep -Fxq "$tag"; then
             echo "No release tag for $RELEASE_SHA; skipping publication."
