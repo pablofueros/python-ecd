@@ -1,0 +1,59 @@
+name: Code Quality
+on:
+  pull_request:
+    branches:
+      - main
+permissions:
+  contents: read
+concurrency:
+  group: code-quality-${{ github.event.pull_request.number}}
+  cancel-in-progress: true
+
+jobs:
+  dependencies:
+    name: Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Check lock file
+        run: uv lock --check
+  linting:
+    name: Linting and types
+    runs-on: ubuntu-latest
+    needs: dependencies
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Run lint and type checks
+        run: make lint
+  formatting:
+    name: Formatting
+    runs-on: ubuntu-latest
+    needs: dependencies
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Check formatting
+        run: uv run --frozen ruff format --check .
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    needs: dependencies
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Run tests
+        run: make test
