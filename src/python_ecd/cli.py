@@ -39,7 +39,9 @@ def init_cmd(
 
     # 0. Parse inputs
     base_dir_name = "." if path is None else path
-    token = typer.prompt("Session Token", default="", show_default=False)
+    token = typer.prompt(
+        "Session Token", default="", show_default=False, hide_input=True
+    )
 
     # 1. Create base directory
     base_dir = utils.create_base(base_dir_name)
@@ -55,7 +57,7 @@ def init_cmd(
     if gitignore_path.exists() and not force:
         typer.echo("⚠️ .gitignore already exists (use --force to overwrite).")
     else:
-        utils.create_gitignore(base_dir)
+        utils.create_gitignore(base_dir, force)
         typer.echo("🛑 .gitignore created")
 
     # 4. Create README.md if requested
@@ -67,13 +69,13 @@ def init_cmd(
         typer.echo("📝 README.md created")
 
     # 5. Save session token if provided
-    token_path = utils.ENV_PATH
+    token_path = base_dir / utils.ENV_PATH
     if not token:
         typer.echo("⚠️ No session token provided (set it later with 'ecd set-token')")
     elif token_path.exists() and not force:
         typer.echo("⚠️ Session token file already exists (use --force to overwrite).")
     else:
-        utils.set_token(token, force)
+        utils.set_token(token, force, token_path)
         typer.echo(f"🔑 Session token saved to {token_path}")
 
 
@@ -83,11 +85,11 @@ def set_token_cmd(
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing token"),
 ) -> None:
     """Set the session token to operate with Everybody Codes webpage."""
-    token_path = utils.ENV_PATH
+    token_path = utils.find_base() / utils.ENV_PATH
     if token_path.exists() and not force:
         typer.echo("⚠️ Session token file already exists (use --force to overwrite).")
     else:
-        utils.set_token(token, force)
+        utils.set_token(token, force, token_path)
         typer.echo(f"🔑 Session token saved to {token_path}")
 
 
@@ -103,7 +105,7 @@ def pull_cmd(
     base_dir = utils.find_base()
 
     # 1. Ensure session token exists
-    if not utils.get_token():
+    if not utils.get_token(base_dir):
         typer.echo(
             "❌ Error: Session token not found in .env. Use 'ecd set-token' to set it."
         )
@@ -212,7 +214,7 @@ def push_cmd(
     base_dir = utils.find_base()
 
     # Ensure session token exists
-    if not utils.get_token():
+    if not utils.get_token(base_dir):
         typer.echo(
             "❌ Error: Session token not found in .env. Use 'ecd set-token' to set it."
         )
