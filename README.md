@@ -6,11 +6,12 @@
 
 ### **✨ A Python CLI tool for managing Everybody Codes puzzles ✨**
 
-[![Code Quality](https://github.com/pablofueros/python-ecd/actions/workflows/code-quality.yaml/badge.svg)](https://github.com/pablofueros/python-ecd/actions/workflows/code-quality.yaml)
-[![Release](https://github.com/pablofueros/python-ecd/actions/workflows/release.yaml/badge.svg)](https://github.com/pablofueros/python-ecd/actions/workflows/release.yaml)
+[![Code Quality](https://github.com/pablofueros/python-ecd/actions/workflows/code-quality.yml/badge.svg)](https://github.com/pablofueros/python-ecd/actions/workflows/code-quality.yml)
+[![Coverage](https://codecov.io/gh/pablofueros/python-ecd/graph/badge.svg?branch=main)](https://codecov.io/gh/pablofueros/python-ecd)
 [![PyPI Latest Release](https://img.shields.io/pypi/v/python-ecd.svg)](https://pypi.org/project/python-ecd/)
-[![PyPI Downloads](https://static.pepy.tech/badge/python-ecd)](https://pepy.tech/projects/python-ecd)
-![versions](https://img.shields.io/pypi/pyversions/python-ecd.svg)
+[![PyPI Downloads](https://img.shields.io/pypi/dm/python-ecd.svg)](https://pypistats.org/packages/python-ecd)
+[![Python](https://img.shields.io/pypi/pyversions/python-ecd.svg)](https://pypi.org/project/python-ecd/)
+[![License](https://img.shields.io/pypi/l/python-ecd.svg)](LICENSE)
 
 ---
 
@@ -40,7 +41,8 @@ uv tool install python-ecd
 uvx python-ecd
 ```
 
-The tool will be available as both 'python-ecd' and 'ecd'
+The tool requires Python 3.13 or newer and is available as both `python-ecd` and
+`ecd`.
 
 
 ## 💻 Usage
@@ -143,3 +145,20 @@ This project is licensed under the terms of the MIT license.
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+### Development
+
+Install the locked environment and Git hooks, then run the same checks as CI:
+
+```bash
+make install
+make format
+make lint
+make test
+```
+
+`make format` fixes lint issues where possible and formats the code.
+
+Contributions target `develop`. Releases are prepared automatically from
+Conventional Commits after `develop` is merged into `main`; publishing uses a
+protected `pypi` environment and PyPI Trusted Publishing.
