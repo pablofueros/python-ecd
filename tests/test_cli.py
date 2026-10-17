@@ -36,7 +36,7 @@ def test_init_creates_workspace_from_packaged_templates(tmp_path, monkeypatch):
     assert not (workspace / ".env").exists()
 
 
-def test_init_preserves_existing_templates_without_force(tmp_path, monkeypatch):
+def test_init_force_overwrites_templates(tmp_path, monkeypatch):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     (workspace / ".gitignore").write_text("old")
@@ -44,11 +44,11 @@ def test_init_preserves_existing_templates_without_force(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(utils, "create_git", lambda path: None)
 
-    result = runner.invoke(app, ["init", "workspace"], input="\n")
+    result = runner.invoke(app, ["init", "workspace", "--force"], input="\n")
 
     assert result.exit_code == 0, result.output
-    assert (workspace / ".gitignore").read_text() == "old"
-    assert (workspace / "README.md").read_text() == "old"
+    assert (workspace / ".gitignore").read_text() != "old"
+    assert (workspace / "README.md").read_text() != "old"
 
 
 def test_set_token_does_not_print_secret(tmp_path, monkeypatch):
@@ -65,7 +65,7 @@ def test_set_token_does_not_print_secret(tmp_path, monkeypatch):
 
 def test_pull_without_token_never_calls_network(tmp_path, monkeypatch):
     monkeypatch.delenv("ECD_TOKEN", raising=False)
-    monkeypatch.setattr(utils, "get_token", lambda: None)
+    monkeypatch.setattr(utils, "get_token", lambda base_dir: None)
     monkeypatch.setattr(
         utils,
         "download_input",
@@ -79,7 +79,7 @@ def test_pull_without_token_never_calls_network(tmp_path, monkeypatch):
 
 
 def test_pull_uses_adapter_double_and_creates_quest(tmp_path, monkeypatch):
-    monkeypatch.setattr(utils, "get_token", lambda: "test-token")
+    monkeypatch.setattr(utils, "get_token", lambda base_dir: "test-token")
     monkeypatch.setattr(utils, "download_input", lambda year, quest: {"1": "example"})
 
     result = invoke_in_workspace(tmp_path, monkeypatch, ["pull", "1", "--year", "2025"])
@@ -92,7 +92,7 @@ def test_pull_uses_adapter_double_and_creates_quest(tmp_path, monkeypatch):
 
 
 def test_pull_reports_adapter_error_without_traceback(tmp_path, monkeypatch):
-    monkeypatch.setattr(utils, "get_token", lambda: "test-token")
+    monkeypatch.setattr(utils, "get_token", lambda base_dir: "test-token")
 
     def fail_download(year, quest):
         raise RuntimeError("service unavailable")
@@ -105,7 +105,7 @@ def test_pull_reports_adapter_error_without_traceback(tmp_path, monkeypatch):
 
 
 def test_push_reports_incorrect_answer(tmp_path, monkeypatch):
-    monkeypatch.setattr(utils, "get_token", lambda: "test-token")
+    monkeypatch.setattr(utils, "get_token", lambda base_dir: "test-token")
     monkeypatch.setattr(utils, "push_solution", lambda *args: {"correct": False})
 
     result = invoke_in_workspace(tmp_path, monkeypatch, ["push", "1", "--year", "2025"])
@@ -115,7 +115,7 @@ def test_push_reports_incorrect_answer(tmp_path, monkeypatch):
 
 
 def test_push_correct_answer_downloads_next_part(tmp_path, monkeypatch):
-    monkeypatch.setattr(utils, "get_token", lambda: "test-token")
+    monkeypatch.setattr(utils, "get_token", lambda base_dir: "test-token")
     monkeypatch.setattr(
         utils,
         "push_solution",

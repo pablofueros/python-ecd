@@ -36,7 +36,7 @@ def test_execute_part_loads_solution_and_data(tmp_path):
 def test_execute_part_rejects_missing_callable(tmp_path):
     write_solution(tmp_path, "part_1 = 'not callable'\n")
 
-    with pytest.raises(AttributeError, match="No function 'part_1'"):
+    with pytest.raises(TypeError, match="No callable 'part_1'"):
         utils.execute_part(tmp_path, 1, 2025, 1)
 
 

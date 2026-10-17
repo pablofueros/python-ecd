@@ -77,9 +77,9 @@ def create_git(base_dir: Path) -> None:
     )
 
 
-def create_gitignore(base_dir: Path) -> None:
+def create_gitignore(base_dir: Path, force: bool = False) -> None:
     gitignore_path = base_dir / ".gitignore"
-    if not gitignore_path.exists():
+    if not gitignore_path.exists() or force:
         content = _read_template(".gitignore.tpl")
         gitignore_path.write_text(content, encoding="utf-8")
 
@@ -97,16 +97,17 @@ def create_solution(quest_dir: Path, force: bool) -> None:
 ENV_PATH = Path(".env")
 
 
-def set_token(token: str, force: bool = False) -> None:
+def set_token(token: str, force: bool = False, env_path: Path = ENV_PATH) -> None:
     """Store the session token in the .env file."""
-    ENV_PATH.touch(exist_ok=True)
-    load_dotenv(dotenv_path=ENV_PATH)
-    set_key(str(ENV_PATH), "ECD_TOKEN", token.strip())
+    env_path.touch(exist_ok=True)
+    load_dotenv(dotenv_path=env_path)
+    set_key(str(env_path), "ECD_TOKEN", token.strip())
 
 
-def get_token() -> str | None:
+def get_token(base_dir: Path | None = None) -> str | None:
     """Return the session token from the .env file, or None if not found."""
-    load_dotenv(dotenv_path=ENV_PATH)
+    env_path = ENV_PATH if base_dir is None else base_dir / ENV_PATH
+    load_dotenv(dotenv_path=env_path)
     return os.getenv("ECD_TOKEN")
 
 
@@ -163,7 +164,7 @@ def execute_part(
     func_name = f"part_{part}"
     func = getattr(module, func_name, None)
     if not callable(func):
-        raise AttributeError(f"No function '{func_name}' defined in solution.py")
+        raise TypeError(f"No callable '{func_name}' defined in solution.py")
 
     # Run the function
     result = func(data)
@@ -205,7 +206,7 @@ def push_solution(
     func_name = f"part_{part}"
     func = getattr(module, func_name, None)
     if not callable(func):
-        raise AttributeError(f"No function '{func_name}' defined in solution.py")
+        raise TypeError(f"No callable '{func_name}' defined in solution.py")
 
     # Fetch input data
     input_dict = download_input(year=year, quest=quest)
@@ -232,7 +233,7 @@ def push_solution(
     return result.json()
 
 
-def format_duration(ms: int | float | None) -> str:
+def format_duration(ms: float | None) -> str:
     """Format duration in milliseconds to a human-readable string using timedelta."""
     if ms is None:
         return "?"
