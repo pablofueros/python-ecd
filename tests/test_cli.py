@@ -26,7 +26,7 @@ def test_init_creates_workspace_from_packaged_templates(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(utils, "create_git", lambda path: None)
 
-    result = runner.invoke(app, ["init", "workspace"], input="\n")
+    result = runner.invoke(app, ["init", "workspace"])
 
     assert result.exit_code == 0, result.output
     workspace = tmp_path / "workspace"
@@ -36,17 +36,17 @@ def test_init_creates_workspace_from_packaged_templates(tmp_path, monkeypatch):
     assert not (workspace / ".env").exists()
 
 
-def test_init_stores_token_inside_workspace(tmp_path, monkeypatch):
+def test_init_does_not_create_token_file(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(utils, "create_git", lambda path: None)
-    secret = "workspace-secret"
+    token_path = tmp_path / "config/ecd/token"
+    monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
 
-    result = runner.invoke(app, ["init", "workspace"], input=f"{secret}\n")
+    result = runner.invoke(app, ["init", "workspace"])
 
     assert result.exit_code == 0, result.output
-    assert secret in (tmp_path / "workspace/.env").read_text()
+    assert not token_path.exists()
     assert not (tmp_path / ".env").exists()
-    assert secret not in result.output
 
 
 def test_init_preserves_existing_files_without_force(tmp_path, monkeypatch):
@@ -58,7 +58,7 @@ def test_init_preserves_existing_files_without_force(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(utils, "create_git", lambda path: None)
 
-    result = runner.invoke(app, ["init", "workspace"], input="new-token\n")
+    result = runner.invoke(app, ["init", "workspace"])
 
     assert result.exit_code == 0, result.output
     assert (workspace / ".gitignore").read_text() == "old-ignore"
@@ -74,7 +74,7 @@ def test_init_force_overwrites_templates(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(utils, "create_git", lambda path: None)
 
-    result = runner.invoke(app, ["init", "workspace", "--force"], input="\n")
+    result = runner.invoke(app, ["init", "workspace", "--force"])
 
     assert result.exit_code == 0, result.output
     assert (workspace / ".gitignore").read_text() != "old"
@@ -83,33 +83,46 @@ def test_init_force_overwrites_templates(tmp_path, monkeypatch):
 
 def test_set_token_does_not_print_secret(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "events").mkdir()
+    token_path = tmp_path / "config/ecd/token"
+    monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
     secret = "secret-value-that-must-not-leak"
 
-    result = runner.invoke(app, ["set-token", secret])
-
-    assert result.exit_code == 0
-    assert secret not in result.output
-    assert secret in (tmp_path / ".env").read_text()
-
-
-def test_set_token_from_nested_directory_updates_workspace(tmp_path, monkeypatch):
-    nested = tmp_path / "events/2025/quest_01"
-    nested.mkdir(parents=True)
-    monkeypatch.chdir(nested)
-    secret = "nested-workspace-secret"
-
-    result = runner.invoke(app, ["set-token", secret])
+    result = runner.invoke(app, ["set-token"], input=f"{secret}\n")
 
     assert result.exit_code == 0, result.output
-    assert secret in (tmp_path / ".env").read_text()
-    assert not (nested / ".env").exists()
     assert secret not in result.output
+    assert token_path.read_text() == f"{secret}\n"
+
+
+def test_set_token_preserves_existing_file_without_force(tmp_path, monkeypatch):
+    token_path = tmp_path / "config/ecd/token"
+    token_path.parent.mkdir(parents=True)
+    token_path.write_text("old-token\n")
+    monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
+
+    result = runner.invoke(app, ["set-token"])
+
+    assert result.exit_code == 0, result.output
+    assert "already exists" in result.output
+    assert token_path.read_text() == "old-token\n"
+
+
+def test_set_token_force_overwrites_existing_file(tmp_path, monkeypatch):
+    token_path = tmp_path / "config/ecd/token"
+    token_path.parent.mkdir(parents=True)
+    token_path.write_text("old-token\n")
+    monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
+    secret = "replacement-token"
+
+    result = runner.invoke(app, ["set-token", "--force"], input=f"{secret}\n")
+
+    assert result.exit_code == 0, result.output
+    assert secret not in result.output
+    assert token_path.read_text() == f"{secret}\n"
 
 
 def test_pull_without_token_never_calls_network(tmp_path, monkeypatch):
-    monkeypatch.delenv("ECD_TOKEN", raising=False)
-    monkeypatch.setattr(utils, "get_token", lambda base_dir: None)
+    monkeypatch.setattr(utils, "has_token", lambda: False)
     monkeypatch.setattr(
         utils,
         "download_input",
@@ -122,10 +135,14 @@ def test_pull_without_token_never_calls_network(tmp_path, monkeypatch):
     assert "Session token not found" in result.output
 
 
-def test_pull_from_nested_directory_reads_workspace_token(tmp_path, monkeypatch):
-    nested = tmp_path / "events/2025"
+def test_pull_from_nested_directory_reads_global_token(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    nested = workspace / "events/2025"
     nested.mkdir(parents=True)
-    (tmp_path / ".env").write_text("ECD_TOKEN=workspace-token\n")
+    token_path = tmp_path / "config/ecd/token"
+    token_path.parent.mkdir(parents=True)
+    token_path.write_text("global-token\n")
+    monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
     monkeypatch.chdir(nested)
     monkeypatch.delenv("ECD_TOKEN", raising=False)
     monkeypatch.setattr(utils, "download_input", lambda year, quest: {})
@@ -137,7 +154,7 @@ def test_pull_from_nested_directory_reads_workspace_token(tmp_path, monkeypatch)
 
 
 def test_pull_uses_adapter_double_and_creates_quest(tmp_path, monkeypatch):
-    monkeypatch.setattr(utils, "get_token", lambda base_dir: "test-token")
+    monkeypatch.setattr(utils, "has_token", lambda: True)
     monkeypatch.setattr(utils, "download_input", lambda year, quest: {"1": "example"})
 
     result = invoke_in_workspace(tmp_path, monkeypatch, ["pull", "1", "--year", "2025"])
@@ -172,7 +189,7 @@ def test_execute_commands_use_expected_data(
 
 
 def test_pull_reports_adapter_error_without_traceback(tmp_path, monkeypatch):
-    monkeypatch.setattr(utils, "get_token", lambda base_dir: "test-token")
+    monkeypatch.setattr(utils, "has_token", lambda: True)
 
     def fail_download(year, quest):
         raise RuntimeError("service unavailable")
@@ -185,7 +202,7 @@ def test_pull_reports_adapter_error_without_traceback(tmp_path, monkeypatch):
 
 
 def test_push_reports_incorrect_answer(tmp_path, monkeypatch):
-    monkeypatch.setattr(utils, "get_token", lambda base_dir: "test-token")
+    monkeypatch.setattr(utils, "has_token", lambda: True)
     monkeypatch.setattr(utils, "push_solution", lambda *args: {"correct": False})
 
     result = invoke_in_workspace(tmp_path, monkeypatch, ["push", "1", "--year", "2025"])
@@ -195,7 +212,7 @@ def test_push_reports_incorrect_answer(tmp_path, monkeypatch):
 
 
 def test_push_correct_answer_downloads_next_part(tmp_path, monkeypatch):
-    monkeypatch.setattr(utils, "get_token", lambda base_dir: "test-token")
+    monkeypatch.setattr(utils, "has_token", lambda: True)
     monkeypatch.setattr(
         utils,
         "push_solution",

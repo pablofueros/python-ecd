@@ -1,3 +1,5 @@
+import os
+import stat
 from pathlib import Path
 
 import pytest
@@ -25,6 +27,36 @@ def test_find_base_fails_outside_workspace(tmp_path, monkeypatch):
 
     with pytest.raises(FileNotFoundError, match="run 'ecd init'"):
         utils.find_base()
+
+
+def test_set_token_creates_private_global_file(tmp_path, monkeypatch):
+    token_path = tmp_path / "config/ecd/token"
+    monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
+
+    result = utils.set_token("  test-token  ")
+
+    assert result == token_path
+    assert token_path.read_text() == "test-token\n"
+    if os.name != "nt":
+        assert stat.S_IMODE(token_path.parent.stat().st_mode) == 0o700
+        assert stat.S_IMODE(token_path.stat().st_mode) == 0o600
+
+
+def test_has_token_prefers_environment(tmp_path, monkeypatch):
+    monkeypatch.setattr(utils, "TOKEN_PATH", tmp_path / "missing-token")
+    monkeypatch.setenv("ECD_TOKEN", "environment-token")
+
+    assert utils.has_token()
+
+
+def test_has_token_reads_global_file(tmp_path, monkeypatch):
+    token_path = tmp_path / "config/ecd/token"
+    token_path.parent.mkdir(parents=True)
+    token_path.write_text("global-token\n")
+    monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
+    monkeypatch.delenv("ECD_TOKEN", raising=False)
+
+    assert utils.has_token()
 
 
 def test_execute_part_loads_solution_and_data(tmp_path):

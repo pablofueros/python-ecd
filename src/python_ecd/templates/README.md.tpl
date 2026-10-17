@@ -23,7 +23,10 @@ Each quest is stored under `events/<year>/quest_<id>/` and contains:
 Note that **[`python-ecd`](https://github.com/pablofueros/python-ecd)** must be installed.
 
 ```bash
-# Initialize your workspace (session token is needed)
+# Configure your session token using a hidden prompt
+ecd set-token
+
+# Initialize your workspace
 ecd init everybody-codes-solutions
 
 # Fetch the available puzzle input

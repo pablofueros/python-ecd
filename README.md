@@ -25,7 +25,7 @@ This tool relies on the [Everybody Codes Data](https://github.com/wimglenn/every
 
 - Initialize workspace for [Everybody Codes](https://everybody.codes) puzzles
 - Download puzzle inputs automatically
-- Manage session tokens securely
+- Configure authentication without exposing session tokens in shell history
 - Run solutions with both test and real input data
 - Submit solutions and check if they are correct
 
@@ -70,13 +70,17 @@ Options:
 
 ### Set Session Token
 
-Configure your [session token](https://github.com/wimglenn/everybody-codes-data?tab=readme-ov-file#auth) for accessing puzzle inputs:
+Copy the session token from the **Session Cookie** section of your
+[Everybody Codes profile](https://everybody.codes/profile), then store it using
+an interactive hidden prompt:
 
 ```bash
-ecd set-token <TOKEN>
+ecd set-token
 ```
 
-Note that is not necessary if you set it during initialization.
+The token is stored at `~/.config/ecd/token`, with access restricted to the
+current user on POSIX systems. For temporary use or CI, set the `ECD_TOKEN`
+environment variable instead; it takes precedence over the file.
 
 ### Download Puzzle Input
 

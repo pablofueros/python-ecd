@@ -7,9 +7,6 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Literal
 
-from dotenv import load_dotenv, set_key
-from ecd import get_inputs, submit
-
 
 def _read_template(template_name: str) -> str:
     """
@@ -94,27 +91,41 @@ def create_solution(quest_dir: Path, force: bool) -> None:
         solution_path.write_text(content, encoding="utf-8")
 
 
-ENV_PATH = Path(".env")
+TOKEN_PATH = Path("~/.config/ecd/token").expanduser()
 
 
-def set_token(token: str, force: bool = False, env_path: Path = ENV_PATH) -> None:
-    """Store the session token in the .env file."""
-    env_path.touch(exist_ok=True)
-    load_dotenv(dotenv_path=env_path)
-    set_key(str(env_path), "ECD_TOKEN", token.strip())
+def set_token(token: str, force: bool = False, token_path: Path | None = None) -> Path:
+    """Store the session token in the global Everybody Codes config file."""
+    path = TOKEN_PATH if token_path is None else token_path
+    value = token.strip()
+    if not value:
+        raise ValueError("Session token cannot be empty.")
+    if path.exists() and not force:
+        raise FileExistsError(f"Session token file already exists: {path}")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(f"{value}\n", encoding="utf-8")
+    if os.name != "nt":
+        path.parent.chmod(0o700)
+        path.chmod(0o600)
+    return path
 
 
-def get_token(base_dir: Path | None = None) -> str | None:
-    """Return the session token from the .env file, or None if not found."""
-    env_path = ENV_PATH if base_dir is None else base_dir / ENV_PATH
-    load_dotenv(dotenv_path=env_path)
-    return os.getenv("ECD_TOKEN")
+def has_token() -> bool:
+    """Return whether auth is available from the environment or config file."""
+    if os.getenv("ECD_TOKEN", "").strip():
+        return True
+    if not TOKEN_PATH.is_file():
+        return False
+    return bool(TOKEN_PATH.read_text(encoding="utf-8").split())
 
 
 def download_input(year: int, quest: int) -> dict[str, str]:
     """
     Fetch the available input text for a specific quest.
     """
+    from ecd import get_inputs
+
     with contextlib.redirect_stderr(io.StringIO()):
         return get_inputs(quest=quest, event=year)
 
@@ -186,6 +197,7 @@ def push_solution(
     Returns:
         The response message from the submission.
     """
+    from ecd import submit
 
     quest_dir = base_dir / "events" / str(year) / f"quest_{quest:02d}"
     solution_path = quest_dir / "solution.py"
