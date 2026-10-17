@@ -36,6 +36,36 @@ def test_init_creates_workspace_from_packaged_templates(tmp_path, monkeypatch):
     assert not (workspace / ".env").exists()
 
 
+def test_init_stores_token_inside_workspace(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(utils, "create_git", lambda path: None)
+    secret = "workspace-secret"
+
+    result = runner.invoke(app, ["init", "workspace"], input=f"{secret}\n")
+
+    assert result.exit_code == 0, result.output
+    assert secret in (tmp_path / "workspace/.env").read_text()
+    assert not (tmp_path / ".env").exists()
+    assert secret not in result.output
+
+
+def test_init_preserves_existing_files_without_force(tmp_path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    (workspace / ".gitignore").write_text("old-ignore")
+    (workspace / "README.md").write_text("old-readme")
+    (workspace / ".env").write_text("ECD_TOKEN=old-token\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(utils, "create_git", lambda path: None)
+
+    result = runner.invoke(app, ["init", "workspace"], input="new-token\n")
+
+    assert result.exit_code == 0, result.output
+    assert (workspace / ".gitignore").read_text() == "old-ignore"
+    assert (workspace / "README.md").read_text() == "old-readme"
+    assert (workspace / ".env").read_text() == "ECD_TOKEN=old-token\n"
+
+
 def test_init_force_overwrites_templates(tmp_path, monkeypatch):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
@@ -63,6 +93,20 @@ def test_set_token_does_not_print_secret(tmp_path, monkeypatch):
     assert secret in (tmp_path / ".env").read_text()
 
 
+def test_set_token_from_nested_directory_updates_workspace(tmp_path, monkeypatch):
+    nested = tmp_path / "events/2025/quest_01"
+    nested.mkdir(parents=True)
+    monkeypatch.chdir(nested)
+    secret = "nested-workspace-secret"
+
+    result = runner.invoke(app, ["set-token", secret])
+
+    assert result.exit_code == 0, result.output
+    assert secret in (tmp_path / ".env").read_text()
+    assert not (nested / ".env").exists()
+    assert secret not in result.output
+
+
 def test_pull_without_token_never_calls_network(tmp_path, monkeypatch):
     monkeypatch.delenv("ECD_TOKEN", raising=False)
     monkeypatch.setattr(utils, "get_token", lambda base_dir: None)
@@ -78,6 +122,20 @@ def test_pull_without_token_never_calls_network(tmp_path, monkeypatch):
     assert "Session token not found" in result.output
 
 
+def test_pull_from_nested_directory_reads_workspace_token(tmp_path, monkeypatch):
+    nested = tmp_path / "events/2025"
+    nested.mkdir(parents=True)
+    (tmp_path / ".env").write_text("ECD_TOKEN=workspace-token\n")
+    monkeypatch.chdir(nested)
+    monkeypatch.delenv("ECD_TOKEN", raising=False)
+    monkeypatch.setattr(utils, "download_input", lambda year, quest: {})
+
+    result = runner.invoke(app, ["pull", "1", "--year", "2025"])
+
+    assert result.exit_code == 0, result.output
+    assert "Quest 01 ready" in result.output
+
+
 def test_pull_uses_adapter_double_and_creates_quest(tmp_path, monkeypatch):
     monkeypatch.setattr(utils, "get_token", lambda base_dir: "test-token")
     monkeypatch.setattr(utils, "download_input", lambda year, quest: {"1": "example"})
@@ -89,6 +147,28 @@ def test_pull_uses_adapter_double_and_creates_quest(tmp_path, monkeypatch):
     assert (quest / "input/input_p1.txt").read_text() == "example"
     assert (quest / "test/test_p1.txt").is_file()
     assert "def part_1" in (quest / "solution.py").read_text()
+
+
+@pytest.mark.parametrize(
+    ("command", "mode", "expected"),
+    [
+        ("run", "input", "Result for Quest 1 Part 1:\nABC"),
+        ("test", "test", "Test result for Quest 1 Part 1:\nABC"),
+    ],
+)
+def test_execute_commands_use_expected_data(
+    tmp_path, monkeypatch, command, mode, expected
+):
+    quest = tmp_path / "events/2025/quest_01"
+    (quest / mode).mkdir(parents=True)
+    (quest / "solution.py").write_text("def part_1(data):\n    return data.upper()\n")
+    (quest / mode / f"{mode}_p1.txt").write_text("abc")
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, [command, "1", "--year", "2025"])
+
+    assert result.exit_code == 0, result.output
+    assert expected in result.output
 
 
 def test_pull_reports_adapter_error_without_traceback(tmp_path, monkeypatch):

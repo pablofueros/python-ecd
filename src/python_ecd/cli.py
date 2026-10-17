@@ -39,7 +39,9 @@ def init_cmd(
 
     # 0. Parse inputs
     base_dir_name = "." if path is None else path
-    token = typer.prompt("Session Token", default="", show_default=False)
+    token = typer.prompt(
+        "Session Token", default="", show_default=False, hide_input=True
+    )
 
     # 1. Create base directory
     base_dir = utils.create_base(base_dir_name)
