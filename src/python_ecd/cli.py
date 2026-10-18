@@ -57,6 +57,7 @@ def main(
 def init_cmd(
     path: str = typer.Argument(None, help="Path to initialize the workspace at"),
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing files"),
+    no_git: bool = typer.Option(False, "--no-git", help="Do not initialize a Git repo"),
 ) -> None:
     """Initialize the workspace for Everybody Codes puzzles."""
 
@@ -78,7 +79,7 @@ def init_cmd(
 
     # 2. Initialize git repository
     git_dir = base_dir / ".git"
-    if not git_dir.exists():
+    if not no_git and not git_dir.exists():
         utils.create_git(base_dir)
 
     # 3. Create .gitignore

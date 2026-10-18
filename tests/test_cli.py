@@ -55,6 +55,22 @@ def test_init_does_not_create_token_file(tmp_path, monkeypatch):
     assert not (tmp_path / ".env").exists()
 
 
+def test_init_no_git_does_not_initialize_repository(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        utils,
+        "create_git",
+        lambda path: pytest.fail("--no-git must not initialize Git"),
+    )
+
+    result = runner.invoke(app, ["init", "workspace", "--no-git"])
+
+    assert result.exit_code == 0, result.output
+    workspace = tmp_path / "workspace"
+    assert (workspace / ".ecd.toml").is_file()
+    assert not (workspace / ".git").exists()
+
+
 def test_init_preserves_existing_files_without_force(tmp_path, monkeypatch):
     workspace = tmp_path / "workspace"
     workspace.mkdir()

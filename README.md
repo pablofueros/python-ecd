@@ -82,6 +82,7 @@ Other commands will show this instruction until the workspace is migrated.
 
 Options:
 - `--force`, `-f`: Overwrite existing files
+- `--no-git`: Do not initialize a Git repository (useful inside an existing repository or development pourposes)
 
 ### Set Session Token
 
