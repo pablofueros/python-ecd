@@ -33,7 +33,7 @@ def _find_base() -> Path:
     try:
         return utils.find_base()
     except utils.WorkspaceMigrationRequired as error:
-        typer.echo(f"⚠️ {error}")
+        typer.echo(f"⚠️  {error}")
         raise typer.Exit(1)
     except FileNotFoundError as error:
         typer.echo(f"❌ {error}")
@@ -42,9 +42,7 @@ def _find_base() -> Path:
 
 def _warn_legacy_env(base_dir: Path) -> None:
     if (base_dir / ".env").is_file():
-        typer.echo(
-            "⚠️ Legacy .env detected. Run 'ecd token set', then delete .env."
-        )
+        typer.echo("⚠️  Legacy .env detected. Run 'ecd token set', then delete .env.")
 
 
 @app.callback()
@@ -94,7 +92,7 @@ def init_cmd(
     # 3. Create .gitignore
     gitignore_path = base_dir / ".gitignore"
     if gitignore_path.exists() and not force:
-        typer.echo("⚠️ .gitignore already exists (use --force to overwrite).")
+        typer.echo("⚠️  .gitignore already exists (use --force to overwrite).")
     else:
         utils.create_gitignore(base_dir, force)
         typer.echo("🛑 .gitignore created")
@@ -102,7 +100,7 @@ def init_cmd(
     # 4. Create README.md if requested
     readme_path = base_dir / "README.md"
     if readme_path.exists() and not force:
-        typer.echo("⚠️ README.md already exists (use --force to overwrite).")
+        typer.echo("⚠️  README.md already exists (use --force to overwrite).")
     else:
         utils.create_readme(base_dir, force)
         typer.echo("📝 README.md created")
@@ -115,13 +113,13 @@ def token_set_cmd(
     """Store the Everybody Codes session token."""
     token_path = utils.TOKEN_PATH
     if token_path.exists() and not force:
-        typer.echo("⚠️ Session token file already exists (use --force to overwrite).")
+        typer.echo("⚠️  Session token file already exists (use --force to overwrite).")
     else:
         token = typer.prompt("Session Token", hide_input=True)
         utils.set_token(token, force)
         typer.echo(f"🔑 Session token saved to {token_path}")
         if utils.get_token_source() == "environment":
-            typer.echo("⚠️ ECD_TOKEN is set and takes precedence over this file.")
+            typer.echo("⚠️  ECD_TOKEN is set and takes precedence over this file.")
 
 
 @token_app.command("status")
@@ -131,7 +129,9 @@ def token_status_cmd() -> None:
     if source == "environment":
         typer.echo("🔑 Token configured from ECD_TOKEN.")
         if utils.TOKEN_PATH.is_file():
-            typer.echo(f"ℹ️ Stored token at {utils.TOKEN_PATH} is currently overridden.")
+            typer.echo(
+                f"ℹ️  Stored token at {utils.TOKEN_PATH} is currently overridden."
+            )
         return
     if source == "file":
         typer.echo(f"🔑 Token configured from {utils.TOKEN_PATH}.")
@@ -166,7 +166,7 @@ def token_remove_cmd(
     """Remove the token stored in the config file."""
     token_path = utils.TOKEN_PATH
     if not token_path.is_file():
-        typer.echo(f"ℹ️ No stored token found at {token_path}.")
+        typer.echo(f"ℹ️  No stored token found at {token_path}.")
         if utils.get_token_source() == "environment":
             typer.echo("⚠️ ECD_TOKEN remains configured in the environment.")
         return
@@ -213,7 +213,7 @@ def pull_cmd(
     solution_file = quest_dir / "solution.py"
     if solution_file.exists() and not force:
         typer.echo(
-            "⚠️ The solution python file already exists (use --force to overwrite)."
+            "⚠️  The solution python file already exists (use --force to overwrite)."
         )
     else:
         utils.create_solution(quest_dir, force)
@@ -224,7 +224,7 @@ def pull_cmd(
         input_file = quest_dir / f"input/input_p{part}.txt"
         if input_file.exists() and not force:
             typer.echo(
-                f"⚠️ Input file for part {part} already exists (use --force to overwrite)."
+                f"⚠️  Input file for part {part} already exists (use --force to overwrite)."
             )
         else:
             input_file.write_text(input, encoding="utf-8")
@@ -355,7 +355,7 @@ def push_cmd(
         input_file = quest_dir / f"input/input_p{part + 1}.txt"
         if input_file.exists():
             typer.echo(
-                f"⚠️ Input file for part {part + 1} already exists (use ecd pull --force to overwrite)."
+                f"⚠️  Input file for part {part + 1} already exists (use ecd pull --force to overwrite)."
             )
         else:
             input_file.write_text(input_dict[str(part + 1)], encoding="utf-8")
@@ -365,7 +365,7 @@ def push_cmd(
         test_file = quest_dir / f"test/test_p{part + 1}.txt"
         if test_file.exists():
             typer.echo(
-                f"⚠️ Test file for part {part + 1} already exists (use ecd pull --force to overwrite)."
+                f"⚠️  Test file for part {part + 1} already exists (use ecd pull --force to overwrite)."
             )
         else:
             test_file.touch(exist_ok=True)
@@ -389,7 +389,7 @@ def progress_cmd() -> None:
         raise typer.Exit(1)
 
     if not any(progress[collection] for collection in ("events", "stories")):
-        typer.echo("ℹ️ No completed parts recorded yet.")
+        typer.echo("ℹ️  No completed parts recorded yet.")
         return
 
     for collection, heading in (("events", "Events"), ("stories", "Stories")):
