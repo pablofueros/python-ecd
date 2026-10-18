@@ -1,6 +1,8 @@
 import os
 import stat
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -133,6 +135,40 @@ def test_execute_part_rejects_missing_callable(tmp_path):
 
     with pytest.raises(TypeError, match="No callable 'part_1'"):
         utils.execute_part(tmp_path, EVENT_TARGET, 1)
+
+
+def test_push_hides_solution_debug_but_preserves_library_output(
+    tmp_path, monkeypatch, capsys
+):
+    quest_dir = tmp_path / EVENT_TARGET.relative_dir
+    quest_dir.mkdir(parents=True)
+    (quest_dir / "solution.py").write_text(
+        "import sys\n"
+        "def part_1(data):\n"
+        "    print('solution stdout')\n"
+        "    print('solution stderr', file=sys.stderr)\n"
+        "    return 42\n"
+    )
+    monkeypatch.setattr(utils, "download_input", lambda target: {"1": "input"})
+
+    class Response:
+        status = 200
+
+        @staticmethod
+        def json():
+            return {"correct": True}
+
+    def submit(**kwargs):
+        print("library stdout")
+        print("library stderr", file=sys.stderr)
+        return Response()
+
+    monkeypatch.setitem(sys.modules, "ecd", SimpleNamespace(submit=submit))
+
+    assert utils.push_solution(tmp_path, EVENT_TARGET, 1) == {"correct": True}
+    captured = capsys.readouterr()
+    assert captured.out == "library stdout\n"
+    assert captured.err == "library stderr\n"
 
 
 def test_challenge_target_builds_category_paths():

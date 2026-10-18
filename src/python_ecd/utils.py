@@ -181,8 +181,7 @@ def download_input(target: ChallengeTarget) -> dict[str, str]:
     """
     from ecd import get_inputs
 
-    with contextlib.redirect_stderr(io.StringIO()):
-        return get_inputs(quest=target.quest, event=target.api_event)
+    return get_inputs(quest=target.quest, event=target.api_event)
 
 
 def execute_part(
@@ -278,20 +277,23 @@ def push_solution(
     input_dict = download_input(target)
     input_text = input_dict[str(part)]
 
-    # Run the function
-    answer = func(input_text)
+    # Run the function without leaking solution debug output into push output
+    with (
+        contextlib.redirect_stdout(io.StringIO()),
+        contextlib.redirect_stderr(io.StringIO()),
+    ):
+        answer = func(input_text)
     if answer is None:
         raise ValueError(f"{func_name} returned None.")
 
     # Submit the answer
-    with contextlib.redirect_stderr(io.StringIO()):
-        result = submit(
-            quest=target.quest,
-            event=target.api_event,
-            part=part,
-            answer=str(answer),
-            quiet=True,
-        )
+    result = submit(
+        quest=target.quest,
+        event=target.api_event,
+        part=part,
+        answer=str(answer),
+        quiet=True,
+    )
 
     if result.status != 200:
         raise RuntimeError(f"Submission failed with status {result.status}")
