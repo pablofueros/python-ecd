@@ -2,6 +2,7 @@ from importlib.metadata import version
 from typing import Literal, cast
 
 import pytest
+from click import unstyle
 from typer.testing import CliRunner
 
 from python_ecd import utils
@@ -24,7 +25,7 @@ def test_help_and_version():
 
     short_option = runner.invoke(app, ["-v"])
     assert short_option.exit_code == 2
-    assert "No such option: -v" in short_option.output
+    assert "No such option: -v" in unstyle(short_option.output)
 
 
 def test_init_creates_workspace_from_packaged_templates(tmp_path, monkeypatch):
