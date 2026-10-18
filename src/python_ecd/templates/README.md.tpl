@@ -8,13 +8,17 @@ Solutions to the [Everybody Codes](https://everybody.codes/) puzzles — powered
 
 ## 📂 Project Structure
 
-Each quest is stored under `events/<year>/quest_<id>/` and contains:
+Event quests are stored under `events/<year>/quest_<id>/`; story quests use
+`stories/<story>/quest_<id>/`. Each quest contains:
 
 | File / Folder | Description |
 |----------------|-------------|
 | `solution.py` | Your Python solution with `part_1`, `part_2`, and `part_3` functions. |
 | `input/` | Puzzle inputs (`input_p1.txt`, …) fetched automatically. |
 | `test/` | Optional test files (`test_p1.txt`, …) for local validation. |
+
+The `.ecd.toml` file identifies the workspace and records parts accepted by
+Everybody Codes. Category directories are created on demand by `ecd pull`.
 
 ---
 
@@ -23,20 +27,30 @@ Each quest is stored under `events/<year>/quest_<id>/` and contains:
 Note that **[`python-ecd`](https://github.com/pablofueros/python-ecd)** must be installed.
 
 ```bash
-# Initialize your workspace (session token is needed)
+# Configure your session token using a hidden prompt
+ecd token set
+
+# Initialize your workspace
 ecd init everybody-codes-solutions
 
-# Fetch the available puzzle input
-ecd pull <QUEST_NUMBER>
+# Fetch an event or story puzzle input
+ecd pull <QUEST_NUMBER> --year <EVENT_YEAR>
+ecd pull <QUEST_NUMBER> --story <STORY_NUMBER>
 
 # Run your test cases for a given part
-ecd test <QUEST_NUMBER> --part=<N>
+ecd test <QUEST_NUMBER> --year <EVENT_YEAR> --part=<N>
 
 # Execute your actual input for a given part
-ecd run <QUEST_NUMBER> --part=<N>
+ecd run <QUEST_NUMBER> --year <EVENT_YEAR> --part=<N>
 
 # Submit your answer for a given part
-ecd push <QUEST_NUMBER> --part=<N>
+ecd push <QUEST_NUMBER> --year <EVENT_YEAR> --part=<N>
+
+# Show accepted quests and parts
+ecd progress
+ecd progress sync
 ```
+
+Use exactly one of `--year` or `--story` with `pull`, `test`, `run`, and `push`.
 
 For more info check the project [README](https://github.com/pablofueros/python-ecd/blob/main/README.md)

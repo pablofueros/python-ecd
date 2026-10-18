@@ -3,25 +3,45 @@ name = "python-ecd"
 version = "0.2.4"
 description = "Python CLI for Everybody Codes"
 readme = "README.md"
-classifiers = [
-    "Programming Language :: Python :: 3.13",
-    "License :: OSI Approved :: MIT License",
-]
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Pablo Garcia", email = "pablofueros@gmail.com" }]
 requires-python = ">=3.13"
+
 dependencies = [
-    "everybody-codes-data==0.5",
-    "python-dotenv>=1.2.1",
-    "typer>=0.20.0",
+    "everybody-codes-data>=0.6,<0.7",
+    "typer>=0.20.0,<1",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=7,<10",
+    "pytest-cov>=4.1,<7",
+    "ruff>=0.16.10,<1",
+    "ty>=0.0.85,<1",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.0,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "python_ecd"
 
 [project.scripts]
 python-ecd = "python_ecd.cli:app"
 ecd = "python_ecd.cli:app"
 
-[build-system]
-requires = ["uv_build>=0.9.7,<0.10.0"]
-build-backend = "uv_build"
+[project.urls]
+Repository = "https://github.com/pablofueros/python-ecd"
+Issues = "https://github.com/pablofueros/python-ecd/issues"
 
-[dependency-groups]
-dev = ["ty>=0.0.1a25"]
+[tool.ruff]
+lint.extend-select = ["I"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/python_ecd/cli.py" = ["BLE001"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers"
+testpaths = ["tests"]

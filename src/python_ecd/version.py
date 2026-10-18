@@ -1,3 +1,3 @@
-import importlib.metadata as metadata
+from importlib import metadata
 
 __version__ = metadata.version("python-ecd")
