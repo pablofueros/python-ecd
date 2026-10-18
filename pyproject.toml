@@ -9,8 +9,8 @@ authors = [{ name = "Pablo Garcia", email = "pablofueros@gmail.com" }]
 requires-python = ">=3.13"
 
 dependencies = [
-    "everybody-codes-data==0.6",
-    "typer>=0.20.0",
+    "everybody-codes-data>=0.6,<0.7",
+    "typer>=0.20.0,<1",
 ]
 
 [dependency-groups]
@@ -41,8 +41,6 @@ lint.extend-select = ["I"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/python_ecd/cli.py" = ["BLE001"]
-"src/python_ecd/utils.py" = ["PYI041", "TRY004"]
-"src/python_ecd/version.py" = ["PLR0402"]
 
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers"
