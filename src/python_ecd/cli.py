@@ -40,6 +40,13 @@ def _find_base() -> Path:
         raise typer.Exit(1)
 
 
+def _warn_legacy_env(base_dir: Path) -> None:
+    if (base_dir / ".env").is_file():
+        typer.echo(
+            "⚠️ Legacy .env detected. Run 'ecd token set', then delete .env."
+        )
+
+
 @app.callback()
 def main(
     version: bool = typer.Option(
@@ -69,6 +76,7 @@ def init_cmd(
     if utils.is_legacy_workspace(base_dir):
         utils.create_workspace_state(base_dir)
         typer.echo(f"🧭 {utils.WORKSPACE_FILE} created")
+        _warn_legacy_env(base_dir)
         return
 
     state_existed = (base_dir / utils.WORKSPACE_FILE).exists()
@@ -76,6 +84,7 @@ def init_cmd(
     typer.echo(f"📁 Created workspace at: {base_dir}")
     if not state_existed:
         typer.echo(f"🧭 {utils.WORKSPACE_FILE} created")
+    _warn_legacy_env(base_dir)
 
     # 2. Initialize git repository
     git_dir = base_dir / ".git"

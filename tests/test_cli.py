@@ -37,7 +37,7 @@ def test_init_creates_workspace_from_packaged_templates(tmp_path, monkeypatch):
     assert not (workspace / "events").exists()
     assert not (workspace / "stories").exists()
     assert (workspace / ".ecd.toml").read_text() == "schema_version = 1\n"
-    assert ".env" not in (workspace / ".gitignore").read_text()
+    assert ".env" in (workspace / ".gitignore").read_text()
     assert "Everybody Codes Solutions" in (workspace / "README.md").read_text()
     assert not (workspace / ".env").exists()
 
@@ -86,6 +86,8 @@ def test_init_preserves_existing_files_without_force(tmp_path, monkeypatch):
     assert (workspace / ".gitignore").read_text() == "old-ignore"
     assert (workspace / "README.md").read_text() == "old-readme"
     assert (workspace / ".env").read_text() == "ECD_TOKEN=old-token\n"
+    assert "Legacy .env detected" in result.output
+    assert "old-token" not in result.output
 
 
 def test_init_migrates_legacy_workspace_without_changing_other_files(
@@ -94,6 +96,7 @@ def test_init_migrates_legacy_workspace_without_changing_other_files(
     workspace = tmp_path / "workspace"
     (workspace / "events/2024").mkdir(parents=True)
     (workspace / "README.md").write_text("custom-readme")
+    (workspace / ".env").write_text("ECD_TOKEN=legacy-secret\n")
     monkeypatch.chdir(workspace)
     monkeypatch.setattr(
         utils,
@@ -104,9 +107,13 @@ def test_init_migrates_legacy_workspace_without_changing_other_files(
     result = runner.invoke(app, ["init"])
 
     assert result.exit_code == 0, result.output
-    assert result.output == "🧭 .ecd.toml created\n"
+    assert "🧭 .ecd.toml created" in result.output
+    assert "Legacy .env detected" in result.output
+    assert "ecd token set" in result.output
+    assert "legacy-secret" not in result.output
     assert (workspace / ".ecd.toml").read_text() == "schema_version = 1\n"
     assert (workspace / "README.md").read_text() == "custom-readme"
+    assert (workspace / ".env").read_text() == "ECD_TOKEN=legacy-secret\n"
     assert not (workspace / ".gitignore").exists()
 
 
