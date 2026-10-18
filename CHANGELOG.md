@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/pablofueros/python-ecd/compare/0.3.0...0.3.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* compact README banner ([2cc571b](https://github.com/pablofueros/python-ecd/commit/2cc571b4fd6a450b77bde37a9586610d66f1410e))
+
 ## [0.3.0](https://github.com/pablofueros/python-ecd/compare/0.2.4...0.3.0) (2026-10-18)
 
 
