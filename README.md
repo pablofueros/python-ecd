@@ -161,10 +161,6 @@ Show the current version of the tool:
 ecd --version
 ```
 
-## ©️ License
-
-This project is licensed under the terms of the MIT license.
-
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
@@ -185,3 +181,7 @@ make test
 Contributions target `develop`. Releases are prepared automatically from
 Conventional Commits after `develop` is merged into `main`; publishing uses a
 protected `pypi` environment and PyPI Trusted Publishing.
+
+## ©️ License
+
+This project is licensed under the terms of the MIT license.
