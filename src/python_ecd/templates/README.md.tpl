@@ -25,7 +25,7 @@ Note that **[`python-ecd`](https://github.com/pablofueros/python-ecd)** must be 
 
 ```bash
 # Configure your session token using a hidden prompt
-ecd set-token
+ecd token set
 
 # Initialize your workspace
 ecd init everybody-codes-solutions

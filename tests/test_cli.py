@@ -82,44 +82,115 @@ def test_init_force_overwrites_templates(tmp_path, monkeypatch):
     assert (workspace / "README.md").read_text() != "old"
 
 
-def test_set_token_does_not_print_secret(tmp_path, monkeypatch):
+def test_token_set_does_not_print_secret(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     token_path = tmp_path / "config/ecd/token"
     monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
+    monkeypatch.delenv("ECD_TOKEN", raising=False)
     secret = "secret-value-that-must-not-leak"
 
-    result = runner.invoke(app, ["set-token"], input=f"{secret}\n")
+    result = runner.invoke(app, ["token", "set"], input=f"{secret}\n")
 
     assert result.exit_code == 0, result.output
     assert secret not in result.output
     assert token_path.read_text() == f"{secret}\n"
 
 
-def test_set_token_preserves_existing_file_without_force(tmp_path, monkeypatch):
+def test_token_set_preserves_existing_file_without_force(tmp_path, monkeypatch):
     token_path = tmp_path / "config/ecd/token"
     token_path.parent.mkdir(parents=True)
     token_path.write_text("old-token\n")
     monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
 
-    result = runner.invoke(app, ["set-token"])
+    result = runner.invoke(app, ["token", "set"])
 
     assert result.exit_code == 0, result.output
     assert "already exists" in result.output
     assert token_path.read_text() == "old-token\n"
 
 
-def test_set_token_force_overwrites_existing_file(tmp_path, monkeypatch):
+def test_token_set_force_overwrites_existing_file(tmp_path, monkeypatch):
     token_path = tmp_path / "config/ecd/token"
     token_path.parent.mkdir(parents=True)
     token_path.write_text("old-token\n")
     monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
     secret = "replacement-token"
 
-    result = runner.invoke(app, ["set-token", "--force"], input=f"{secret}\n")
+    result = runner.invoke(app, ["token", "set", "--force"], input=f"{secret}\n")
 
     assert result.exit_code == 0, result.output
     assert secret not in result.output
     assert token_path.read_text() == f"{secret}\n"
+
+
+def test_token_status_reports_environment_without_secret(tmp_path, monkeypatch):
+    secret = "environment-token-that-must-not-leak"
+    monkeypatch.setenv("ECD_TOKEN", secret)
+    monkeypatch.setattr(utils, "TOKEN_PATH", tmp_path / "missing-token")
+
+    result = runner.invoke(app, ["token", "status"])
+
+    assert result.exit_code == 0, result.output
+    assert "ECD_TOKEN" in result.output
+    assert secret not in result.output
+
+
+def test_token_status_reports_private_file(tmp_path, monkeypatch):
+    token_path = tmp_path / "config/ecd/token"
+    monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
+    monkeypatch.delenv("ECD_TOKEN", raising=False)
+    utils.set_token("stored-token")
+
+    result = runner.invoke(app, ["token", "status"])
+
+    assert result.exit_code == 0, result.output
+    assert str(token_path) in result.output
+    if utils.os.name != "nt":
+        assert "private (0600)" in result.output
+    assert "stored-token" not in result.output
+
+
+def test_token_check_uses_adapter_without_exposing_secret(tmp_path, monkeypatch):
+    secret = "valid-token-that-must-not-leak"
+    calls = []
+    monkeypatch.setenv("ECD_TOKEN", secret)
+    monkeypatch.setattr(utils, "check_token", lambda: calls.append(True))
+
+    result = runner.invoke(app, ["token", "check"])
+
+    assert result.exit_code == 0, result.output
+    assert calls == [True]
+    assert "Token is valid" in result.output
+    assert secret not in result.output
+
+
+def test_token_check_reports_failure_without_traceback(monkeypatch):
+    monkeypatch.setenv("ECD_TOKEN", "invalid-token")
+
+    def fail_check():
+        raise RuntimeError("Everybody Codes returned HTTP 401")
+
+    monkeypatch.setattr(utils, "check_token", fail_check)
+
+    result = runner.invoke(app, ["token", "check"])
+
+    assert result.exit_code == 1
+    assert "Token check failed" in result.output
+    assert "401" in result.output
+
+
+def test_token_remove_deletes_only_stored_file(tmp_path, monkeypatch):
+    token_path = tmp_path / "config/ecd/token"
+    token_path.parent.mkdir(parents=True)
+    token_path.write_text("stored-token\n")
+    monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
+    monkeypatch.setenv("ECD_TOKEN", "environment-token")
+
+    result = runner.invoke(app, ["token", "remove", "--force"])
+
+    assert result.exit_code == 0, result.output
+    assert not token_path.exists()
+    assert "ECD_TOKEN remains configured" in result.output
 
 
 def test_pull_without_token_never_calls_network(tmp_path, monkeypatch):

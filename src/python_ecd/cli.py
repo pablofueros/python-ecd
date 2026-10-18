@@ -7,6 +7,8 @@ from .target import ChallengeTarget
 from .version import __version__
 
 app = typer.Typer(name="python-ecd", help="python-ecd: CLI tool for Everybody Codes")
+token_app = typer.Typer(help="Manage Everybody Codes authentication.")
+app.add_typer(token_app, name="token")
 
 
 def _resolve_target(quest: int, year: int | None, story: int | None) -> ChallengeTarget:
@@ -76,11 +78,11 @@ def init_cmd(
         typer.echo("📝 README.md created")
 
 
-@app.command("set-token")
-def set_token_cmd(
+@token_app.command("set")
+def token_set_cmd(
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing token"),
 ) -> None:
-    """Set the session token to operate with Everybody Codes webpage."""
+    """Store the Everybody Codes session token."""
     token_path = utils.TOKEN_PATH
     if token_path.exists() and not force:
         typer.echo("⚠️ Session token file already exists (use --force to overwrite).")
@@ -88,6 +90,63 @@ def set_token_cmd(
         token = typer.prompt("Session Token", hide_input=True)
         utils.set_token(token, force)
         typer.echo(f"🔑 Session token saved to {token_path}")
+        if utils.get_token_source() == "environment":
+            typer.echo("⚠️ ECD_TOKEN is set and takes precedence over this file.")
+
+
+@token_app.command("status")
+def token_status_cmd() -> None:
+    """Show the active token source without revealing the token."""
+    source = utils.get_token_source()
+    if source == "environment":
+        typer.echo("🔑 Token configured from ECD_TOKEN.")
+        if utils.TOKEN_PATH.is_file():
+            typer.echo(f"ℹ️ Stored token at {utils.TOKEN_PATH} is currently overridden.")
+        return
+    if source == "file":
+        typer.echo(f"🔑 Token configured from {utils.TOKEN_PATH}.")
+        private = utils.token_file_is_private()
+        if private is True:
+            typer.echo("🔒 File permissions: private (0600).")
+        elif private is False:
+            typer.echo("⚠️ File permissions are not private (expected 0600).")
+        return
+    typer.echo("❌ Session token not found. Use 'ecd token set' or ECD_TOKEN.")
+    raise typer.Exit(1)
+
+
+@token_app.command("check")
+def token_check_cmd() -> None:
+    """Check the active token against Everybody Codes."""
+    if not utils.has_token():
+        typer.echo("❌ Session token not found. Use 'ecd token set' or ECD_TOKEN.")
+        raise typer.Exit(1)
+    try:
+        utils.check_token()
+    except Exception as e:
+        typer.echo(f"❌ Token check failed: {e}")
+        raise typer.Exit(1)
+    typer.echo("✅ Token is valid.")
+
+
+@token_app.command("remove")
+def token_remove_cmd(
+    force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation"),
+) -> None:
+    """Remove the token stored in the config file."""
+    token_path = utils.TOKEN_PATH
+    if not token_path.is_file():
+        typer.echo(f"ℹ️ No stored token found at {token_path}.")
+        if utils.get_token_source() == "environment":
+            typer.echo("⚠️ ECD_TOKEN remains configured in the environment.")
+        return
+    if not force and not typer.confirm(f"Remove the stored token at {token_path}?"):
+        typer.echo("Token removal cancelled.")
+        return
+    utils.remove_token()
+    typer.echo(f"🗑️ Removed stored token at {token_path}.")
+    if utils.get_token_source() == "environment":
+        typer.echo("⚠️ ECD_TOKEN remains configured in the environment.")
 
 
 @app.command("pull")
@@ -106,7 +165,7 @@ def pull_cmd(
     # 1. Ensure session token exists
     if not utils.has_token():
         typer.echo(
-            "❌ Error: Session token not found. Use 'ecd set-token' or ECD_TOKEN."
+            "❌ Error: Session token not found. Use 'ecd token set' or ECD_TOKEN."
         )
         raise typer.Exit(1)
 
@@ -221,7 +280,7 @@ def push_cmd(
     # Ensure session token exists
     if not utils.has_token():
         typer.echo(
-            "❌ Error: Session token not found. Use 'ecd set-token' or ECD_TOKEN."
+            "❌ Error: Session token not found. Use 'ecd token set' or ECD_TOKEN."
         )
         raise typer.Exit(1)
 

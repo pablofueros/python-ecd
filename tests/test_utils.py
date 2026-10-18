@@ -70,6 +70,58 @@ def test_has_token_reads_global_file(tmp_path, monkeypatch):
     assert utils.has_token()
 
 
+def test_get_token_prefers_environment_without_modifying_file(tmp_path, monkeypatch):
+    token_path = tmp_path / "config/ecd/token"
+    token_path.parent.mkdir(parents=True)
+    token_path.write_text("stored-token\n")
+    monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
+    monkeypatch.setenv("ECD_TOKEN", "environment-token")
+
+    assert utils.get_token() == "environment-token"
+    assert utils.get_token_source() == "environment"
+    assert token_path.read_text() == "stored-token\n"
+
+
+def test_check_token_calls_profile_endpoint_without_writing(tmp_path, monkeypatch):
+    token_path = tmp_path / "missing-token"
+    requests = []
+    monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
+    monkeypatch.setenv("ECD_TOKEN", "test-token")
+
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+    def open_request(request, timeout):
+        requests.append((request, timeout))
+        return Response()
+
+    monkeypatch.setattr(utils.urllib.request, "urlopen", open_request)
+
+    utils.check_token()
+
+    request, timeout = requests[0]
+    assert request.full_url == utils.TOKEN_CHECK_URL
+    assert request.get_header("Cookie") == "everybody-codes=test-token"
+    assert timeout == 10
+    assert not token_path.exists()
+
+
+def test_remove_token_is_idempotent(tmp_path, monkeypatch):
+    token_path = tmp_path / "config/ecd/token"
+    token_path.parent.mkdir(parents=True)
+    token_path.write_text("stored-token\n")
+    monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
+
+    assert utils.remove_token()
+    assert not utils.remove_token()
+
+
 def test_execute_part_loads_solution_and_data(tmp_path):
     write_solution(tmp_path, "def part_1(data):\n    return data.upper()\n")
 

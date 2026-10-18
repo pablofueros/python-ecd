@@ -76,12 +76,20 @@ Copy the session token from the **Session Cookie** section of your
 an interactive hidden prompt:
 
 ```bash
-ecd set-token
+ecd token set
 ```
 
 The token is stored at `~/.config/ecd/token`, with access restricted to the
 current user on POSIX systems. For temporary use or CI, set the `ECD_TOKEN`
 environment variable instead; it takes precedence over the file.
+
+Inspect or validate the active authentication without revealing the token:
+
+```bash
+ecd token status  # Local source and file permissions
+ecd token check   # Remote validation against Everybody Codes
+ecd token remove  # Remove the stored file after confirmation
+```
 
 ### Download Puzzle Input
 

@@ -2,7 +2,9 @@ import contextlib
 import importlib.util
 import io
 import os
+import stat
 import subprocess
+import urllib.request
 from datetime import timedelta
 from pathlib import Path
 from typing import Literal
@@ -95,6 +97,9 @@ def create_solution(quest_dir: Path, force: bool) -> None:
 
 
 TOKEN_PATH = Path("~/.config/ecd/token").expanduser()
+TOKEN_CHECK_URL = "https://api.everybody.codes/user/me"
+
+type TokenSource = Literal["environment", "file"]
 
 
 def set_token(token: str, force: bool = False, token_path: Path | None = None) -> Path:
@@ -114,13 +119,60 @@ def set_token(token: str, force: bool = False, token_path: Path | None = None) -
     return path
 
 
+def get_token() -> str:
+    """Read the active token, preferring the environment over the config file."""
+    environment_token = os.getenv("ECD_TOKEN", "").strip()
+    if environment_token:
+        return environment_token
+    if TOKEN_PATH.is_file():
+        values = TOKEN_PATH.read_text(encoding="utf-8").split()
+        if values:
+            return values[0]
+    raise ValueError("Session token not found.")
+
+
+def get_token_source() -> TokenSource | None:
+    """Return where the active token comes from without exposing its value."""
+    if os.getenv("ECD_TOKEN", "").strip():
+        return "environment"
+    if TOKEN_PATH.is_file() and TOKEN_PATH.read_text(encoding="utf-8").split():
+        return "file"
+    return None
+
+
 def has_token() -> bool:
     """Return whether auth is available from the environment or config file."""
-    if os.getenv("ECD_TOKEN", "").strip():
-        return True
+    return get_token_source() is not None
+
+
+def token_file_is_private() -> bool | None:
+    """Check POSIX token permissions, or return None when not applicable."""
+    if os.name == "nt" or not TOKEN_PATH.is_file():
+        return None
+    return stat.S_IMODE(TOKEN_PATH.stat().st_mode) == 0o600
+
+
+def check_token() -> None:
+    """Validate the active token against the Everybody Codes profile endpoint."""
+    token = get_token()
+    request = urllib.request.Request(
+        TOKEN_CHECK_URL,
+        headers={
+            "Cookie": f"everybody-codes={token}",
+            "User-Agent": "python-ecd",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=10) as response:
+        if response.status != 200:
+            raise RuntimeError(f"Everybody Codes returned HTTP {response.status}.")
+
+
+def remove_token() -> bool:
+    """Remove the stored token file and report whether one existed."""
     if not TOKEN_PATH.is_file():
         return False
-    return bool(TOKEN_PATH.read_text(encoding="utf-8").split())
+    TOKEN_PATH.unlink()
+    return True
 
 
 def download_input(target: ChallengeTarget) -> dict[str, str]:
