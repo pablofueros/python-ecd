@@ -33,7 +33,6 @@ def main(
     version: bool = typer.Option(
         None,
         "--version",
-        "-v",
         callback=_display_version,
         help="Display the version and exit.",
         is_eager=True,  # Process version before other logic

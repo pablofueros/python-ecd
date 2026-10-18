@@ -21,6 +21,10 @@ def test_help_and_version():
     assert result.exit_code == 0
     assert result.stdout.strip() == f"python-ecd {version('python-ecd')}"
 
+    short_option = runner.invoke(app, ["-v"])
+    assert short_option.exit_code == 2
+    assert "No such option: -v" in short_option.output
+
 
 def test_init_creates_workspace_from_packaged_templates(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
