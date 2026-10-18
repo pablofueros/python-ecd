@@ -599,3 +599,82 @@ def test_progress_summarizes_events_and_stories(tmp_path, monkeypatch):
     assert result.exit_code == 0, result.output
     assert "2025: 0/1 quests complete, 1/3 parts complete" in result.output
     assert "3: 1/1 quests complete, 3/3 parts complete" in result.output
+
+
+def test_progress_sync_updates_local_quests_without_exposing_answers(
+    tmp_path, monkeypatch
+):
+    utils.create_workspace_state(tmp_path)
+    (tmp_path / "events/2024/quest_01").mkdir(parents=True)
+    (tmp_path / "events/2024/quest_02").mkdir(parents=True)
+    (tmp_path / "stories/3/quest_01").mkdir(parents=True)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(utils, "has_token", lambda: True)
+    calls = []
+
+    def fetch(target):
+        calls.append(target)
+        return [1, 2, 3] if target.quest == 1 else []
+
+    monkeypatch.setattr(utils, "fetch_completed_parts", fetch)
+
+    result = runner.invoke(app, ["progress", "sync"])
+
+    assert result.exit_code == 0, result.output
+    assert [(target.category, target.edition, target.quest) for target in calls] == [
+        ("event", 2024, 1),
+        ("event", 2024, 2),
+        ("story", 3, 1),
+    ]
+    assert "Synchronizing progress" in result.output
+    assert "Synchronized progress for 3 quests" in result.output
+    assert "\033" not in result.output
+    assert "answer" not in result.output
+    assert "2024: 1/2 quests complete, 3/6 parts complete" in result.output
+    assert "3: 1/1 quests complete, 3/3 parts complete" in result.output
+    assert (tmp_path / ".ecd.toml").read_text() == (
+        "schema_version = 1\n"
+        '\n[events."2024"]\n'
+        "quest_01 = [1, 2, 3]\n"
+        '\n[stories."3"]\n'
+        "quest_01 = [1, 2, 3]\n"
+    )
+
+
+def test_progress_sync_failure_preserves_existing_progress(tmp_path, monkeypatch):
+    utils.create_workspace_state(tmp_path)
+    target = utils.ChallengeTarget(category="event", edition=2024, quest=1)
+    utils.record_completed_part(tmp_path, target, 1)
+    (tmp_path / target.relative_dir).mkdir(parents=True)
+    original = (tmp_path / ".ecd.toml").read_text()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(utils, "has_token", lambda: True)
+    monkeypatch.setattr(
+        utils,
+        "fetch_completed_parts",
+        lambda target: (_ for _ in ()).throw(RuntimeError("service unavailable")),
+    )
+
+    result = runner.invoke(app, ["progress", "sync"])
+
+    assert result.exit_code == 1
+    assert "Failed to synchronize progress" in result.output
+    assert (tmp_path / ".ecd.toml").read_text() == original
+
+
+def test_progress_sync_without_local_quests_does_not_call_network(
+    tmp_path, monkeypatch
+):
+    utils.create_workspace_state(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(utils, "has_token", lambda: True)
+    monkeypatch.setattr(
+        utils,
+        "fetch_completed_parts",
+        lambda target: pytest.fail("network adapter must not be called"),
+    )
+
+    result = runner.invoke(app, ["progress", "sync"])
+
+    assert result.exit_code == 0, result.output
+    assert "No local quests found" in result.output

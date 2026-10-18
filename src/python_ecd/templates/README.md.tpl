@@ -48,6 +48,7 @@ ecd push <QUEST_NUMBER> --year <EVENT_YEAR> --part=<N>
 
 # Show accepted quests and parts
 ecd progress
+ecd progress sync
 ```
 
 Use exactly one of `--year` or `--story` with `pull`, `test`, `run`, and `push`.

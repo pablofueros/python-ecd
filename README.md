@@ -175,10 +175,12 @@ Display the accepted quests and parts recorded in the current workspace:
 
 ```bash
 ecd progress
+ecd progress sync  # Synchronize local quests with Everybody Codes
 ```
 
 Only successful submissions made after `.ecd.toml` was created are included.
-Progress completed with an earlier version is not inferred from solution files.
+Use `ecd progress sync` to retrieve earlier progress for quests already present
+in the workspace. Accepted answers are never displayed or stored locally.
 
 ### Display Version
 

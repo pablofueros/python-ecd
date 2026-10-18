@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from typing import Literal
 
@@ -9,7 +10,9 @@ from .version import __version__
 
 app = typer.Typer(name="python-ecd", help="python-ecd: CLI tool for Everybody Codes")
 token_app = typer.Typer(help="Manage Everybody Codes authentication.")
+progress_app = typer.Typer(help="Show or synchronize accepted puzzle parts.")
 app.add_typer(token_app, name="token")
+app.add_typer(progress_app, name="progress")
 
 
 def _resolve_target(quest: int, year: int | None, story: int | None) -> ChallengeTarget:
@@ -378,32 +381,96 @@ def push_cmd(
         )
 
 
-@app.command("progress")
-def progress_cmd() -> None:
+def _display_progress(progress: utils.Progress, targets: list[ChallengeTarget]) -> None:
+    known_quests: dict[str, dict[int, set[int]]] = {"events": {}, "stories": {}}
+    for collection in ("events", "stories"):
+        for edition, quests in progress[collection].items():
+            known_quests[collection][edition] = set(quests)
+    for target in targets:
+        collection = "events" if target.category == "event" else "stories"
+        known_quests[collection].setdefault(target.edition, set()).add(target.quest)
+
+    if not any(known_quests.values()):
+        typer.echo("ℹ️  No completed parts recorded yet.")
+        return
+
+    for collection, heading in (("events", "Events"), ("stories", "Stories")):
+        if not known_quests[collection]:
+            continue
+        typer.echo(heading)
+        for edition, quest_numbers in sorted(known_quests[collection].items()):
+            recorded = progress[collection].get(edition, {})
+            completed_quests = sum(
+                recorded.get(quest) == [1, 2, 3] for quest in quest_numbers
+            )
+            completed_parts = sum(
+                len(recorded.get(quest, [])) for quest in quest_numbers
+            )
+            total_parts = len(quest_numbers) * 3
+            typer.echo(
+                f"  {edition}: {completed_quests}/{len(quest_numbers)} quests complete, "
+                f"{completed_parts}/{total_parts} parts complete"
+            )
+
+
+@progress_app.callback(invoke_without_command=True)
+def progress_cmd(ctx: typer.Context) -> None:
     """Show accepted parts recorded in the workspace."""
+    if ctx.invoked_subcommand is not None:
+        return
     base_dir = _find_base()
     try:
         progress = utils.load_progress(base_dir)
     except Exception as e:
         typer.echo(f"❌ Failed to read progress: {e}")
         raise typer.Exit(1)
+    _display_progress(progress, utils.discover_targets(base_dir))
 
-    if not any(progress[collection] for collection in ("events", "stories")):
-        typer.echo("ℹ️  No completed parts recorded yet.")
+
+@progress_app.command("sync")
+def progress_sync_cmd() -> None:
+    """Synchronize progress for quests present in the workspace."""
+    base_dir = _find_base()
+    if not utils.has_token():
+        typer.echo(
+            "❌ Error: Session token not found. Use 'ecd token set' or ECD_TOKEN."
+        )
+        raise typer.Exit(1)
+
+    targets = utils.discover_targets(base_dir)
+    if not targets:
+        typer.echo("ℹ️  No local quests found to synchronize.")
         return
 
-    for collection, heading in (("events", "Events"), ("stories", "Stories")):
-        if not progress[collection]:
-            continue
-        typer.echo(heading)
-        for edition, quests in sorted(progress[collection].items()):
-            completed_quests = sum(parts == [1, 2, 3] for parts in quests.values())
-            completed_parts = sum(len(parts) for parts in quests.values())
-            total_parts = len(quests) * 3
-            typer.echo(
-                f"  {edition}: {completed_quests}/{len(quests)} quests complete, "
-                f"{completed_parts}/{total_parts} parts complete"
-            )
+    try:
+        updates = []
+        try:
+            with typer.progressbar(
+                targets, label="Synchronizing progress", show_pos=True
+            ) as progress:
+                for target in progress:
+                    updates.append((target, utils.fetch_completed_parts(target)))
+        finally:
+            if sys.stdout.isatty():
+                typer.echo("\033[1A\033[2K\r", nl=False)
+        progress = utils.load_progress(base_dir)
+        for target, parts in updates:
+            collection = "events" if target.category == "event" else "stories"
+            editions = progress[collection]
+            quests = editions.setdefault(target.edition, {})
+            if parts:
+                quests[target.quest] = parts
+            else:
+                quests.pop(target.quest, None)
+            if not quests:
+                editions.pop(target.edition)
+        utils.save_progress(base_dir, progress)
+    except Exception as e:
+        typer.echo(f"❌ Failed to synchronize progress: {e}")
+        raise typer.Exit(1)
+
+    typer.echo(f"✅ Synchronized progress for {len(targets)} quests.")
+    _display_progress(progress, targets)
 
 
 if __name__ == "__main__":

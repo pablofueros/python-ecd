@@ -1,6 +1,7 @@
 import contextlib
 import importlib.util
 import io
+import json
 import os
 import stat
 import subprocess
@@ -15,6 +16,9 @@ from .target import ChallengeTarget
 
 WORKSPACE_FILE = ".ecd.toml"
 WORKSPACE_SCHEMA_VERSION = 1
+QUEST_STATUS_URL = "https://api.everybody.codes/event/{event}/quest/{quest}"
+
+type Progress = dict[str, dict[int, dict[int, list[int]]]]
 
 
 class WorkspaceMigrationRequired(FileNotFoundError):
@@ -73,7 +77,7 @@ def find_base() -> Path:
     raise FileNotFoundError("Base directory not found. Please run 'ecd init'.")
 
 
-def load_progress(base_dir: Path) -> dict[str, dict[int, dict[int, list[int]]]]:
+def load_progress(base_dir: Path) -> Progress:
     """Load completed parts grouped by category, edition, and quest."""
     state_path = base_dir / WORKSPACE_FILE
     with state_path.open("rb") as state_file:
@@ -84,7 +88,7 @@ def load_progress(base_dir: Path) -> dict[str, dict[int, dict[int, list[int]]]]:
             f"{state.get('schema_version')!r}"
         )
 
-    progress: dict[str, dict[int, dict[int, list[int]]]] = {
+    progress: Progress = {
         "events": {},
         "stories": {},
     }
@@ -111,9 +115,7 @@ def load_progress(base_dir: Path) -> dict[str, dict[int, dict[int, list[int]]]]:
     return progress
 
 
-def _serialize_progress(
-    progress: dict[str, dict[int, dict[int, list[int]]]],
-) -> str:
+def _serialize_progress(progress: Progress) -> str:
     lines = [f"schema_version = {WORKSPACE_SCHEMA_VERSION}"]
     for collection in ("events", "stories"):
         for edition in sorted(progress[collection]):
@@ -125,6 +127,17 @@ def _serialize_progress(
     return "\n".join(lines) + "\n"
 
 
+def save_progress(base_dir: Path, progress: Progress) -> None:
+    """Atomically replace the workspace progress file."""
+    state_path = base_dir / WORKSPACE_FILE
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", dir=base_dir, prefix=".ecd.", delete=False
+    ) as temporary_file:
+        temporary_path = Path(temporary_file.name)
+        temporary_file.write(_serialize_progress(progress))
+    temporary_path.replace(state_path)
+
+
 def record_completed_part(
     base_dir: Path, target: ChallengeTarget, part: Literal[1, 2, 3]
 ) -> None:
@@ -134,14 +147,45 @@ def record_completed_part(
     quests = progress[collection].setdefault(target.edition, {})
     completed_parts = quests.setdefault(target.quest, [])
     completed_parts.append(part)
+    save_progress(base_dir, progress)
 
-    state_path = base_dir / WORKSPACE_FILE
-    with tempfile.NamedTemporaryFile(
-        "w", encoding="utf-8", dir=base_dir, prefix=".ecd.", delete=False
-    ) as temporary_file:
-        temporary_path = Path(temporary_file.name)
-        temporary_file.write(_serialize_progress(progress))
-    temporary_path.replace(state_path)
+
+def discover_targets(base_dir: Path) -> list[ChallengeTarget]:
+    """Return event and story quests present in the workspace."""
+    targets = []
+    for collection, category in (("events", "event"), ("stories", "story")):
+        for quest_dir in (base_dir / collection).glob("*/quest_*"):
+            if not quest_dir.is_dir():
+                continue
+            try:
+                edition = int(quest_dir.parent.name)
+                quest = int(quest_dir.name.removeprefix("quest_"))
+            except ValueError:
+                continue
+            targets.append(
+                ChallengeTarget(category=category, edition=edition, quest=quest)
+            )
+    return sorted(
+        targets, key=lambda target: (target.category, target.edition, target.quest)
+    )
+
+
+def fetch_completed_parts(target: ChallengeTarget) -> list[int]:
+    """Fetch completed part numbers without exposing accepted answers."""
+    token = get_token()
+    url = QUEST_STATUS_URL.format(event=target.api_event, quest=target.quest)
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Cookie": f"everybody-codes={token}",
+            "User-Agent": "python-ecd",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=10) as response:
+        if response.status != 200:
+            raise RuntimeError(f"Everybody Codes returned HTTP {response.status}.")
+        data = json.loads(response.read())
+    return [part for part in (1, 2, 3) if f"answer{part}" in data]
 
 
 def create_quest_dir(base_dir: Path, target: ChallengeTarget) -> Path:

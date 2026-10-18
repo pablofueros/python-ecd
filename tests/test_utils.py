@@ -63,6 +63,52 @@ def test_record_completed_part_writes_sorted_progress_without_duplicates(tmp_pat
     )
 
 
+def test_discover_targets_returns_only_valid_quest_directories(tmp_path):
+    (tmp_path / "events/2025/quest_02").mkdir(parents=True)
+    (tmp_path / "events/2024/quest_01").mkdir(parents=True)
+    (tmp_path / "stories/3/quest_01").mkdir(parents=True)
+    (tmp_path / "events/year/quest_03").mkdir(parents=True)
+    (tmp_path / "events/2025/not_a_quest").mkdir(parents=True)
+
+    assert utils.discover_targets(tmp_path) == [
+        ChallengeTarget(category="event", edition=2024, quest=1),
+        ChallengeTarget(category="event", edition=2025, quest=2),
+        ChallengeTarget(category="story", edition=3, quest=1),
+    ]
+
+
+def test_fetch_completed_parts_returns_presence_without_answer_values(
+    monkeypatch,
+):
+    requests = []
+
+    class Response:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        @staticmethod
+        def read():
+            return b'{"answer1":"secret-one","answer3":"secret-three","key1":"key"}'
+
+    def open_request(request, timeout):
+        requests.append((request, timeout))
+        return Response()
+
+    monkeypatch.setattr(utils, "get_token", lambda: "test-token")
+    monkeypatch.setattr(utils.urllib.request, "urlopen", open_request)
+
+    assert utils.fetch_completed_parts(EVENT_TARGET) == [1, 3]
+    request, timeout = requests[0]
+    assert request.full_url.endswith("/event/2025/quest/1")
+    assert request.get_header("Cookie") == "everybody-codes=test-token"
+    assert timeout == 10
+
+
 def test_set_token_creates_private_global_file(tmp_path, monkeypatch):
     token_path = tmp_path / "config/ecd/token"
     monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
