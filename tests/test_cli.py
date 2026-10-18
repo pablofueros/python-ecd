@@ -179,6 +179,21 @@ def test_token_check_reports_failure_without_traceback(monkeypatch):
     assert "401" in result.output
 
 
+def test_token_check_without_token_never_calls_network(tmp_path, monkeypatch):
+    monkeypatch.delenv("ECD_TOKEN", raising=False)
+    monkeypatch.setattr(utils, "TOKEN_PATH", tmp_path / "missing-token")
+    monkeypatch.setattr(
+        utils,
+        "check_token",
+        lambda: pytest.fail("network adapter must not be called"),
+    )
+
+    result = runner.invoke(app, ["token", "check"])
+
+    assert result.exit_code == 1
+    assert "Session token not found" in result.output
+
+
 def test_token_remove_deletes_only_stored_file(tmp_path, monkeypatch):
     token_path = tmp_path / "config/ecd/token"
     token_path.parent.mkdir(parents=True)
@@ -191,6 +206,35 @@ def test_token_remove_deletes_only_stored_file(tmp_path, monkeypatch):
     assert result.exit_code == 0, result.output
     assert not token_path.exists()
     assert "ECD_TOKEN remains configured" in result.output
+
+
+def test_token_remove_cancel_preserves_stored_file(tmp_path, monkeypatch):
+    token_path = tmp_path / "config/ecd/token"
+    token_path.parent.mkdir(parents=True)
+    token_path.write_text("stored-token\n")
+    monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
+
+    result = runner.invoke(app, ["token", "remove"], input="n\n")
+
+    assert result.exit_code == 0, result.output
+    assert "removal cancelled" in result.output
+    assert token_path.read_text() == "stored-token\n"
+
+
+@pytest.mark.skipif(utils.os.name == "nt", reason="POSIX permissions only")
+def test_token_status_warns_about_insecure_file_permissions(tmp_path, monkeypatch):
+    token_path = tmp_path / "config/ecd/token"
+    token_path.parent.mkdir(parents=True)
+    token_path.write_text("stored-token\n")
+    token_path.chmod(0o644)
+    monkeypatch.setattr(utils, "TOKEN_PATH", token_path)
+    monkeypatch.delenv("ECD_TOKEN", raising=False)
+
+    result = runner.invoke(app, ["token", "status"])
+
+    assert result.exit_code == 0, result.output
+    assert "permissions are not private" in result.output
+    assert "stored-token" not in result.output
 
 
 def test_pull_without_token_never_calls_network(tmp_path, monkeypatch):
@@ -257,6 +301,26 @@ def test_pull_uses_adapter_double_and_creates_quest(tmp_path, monkeypatch):
     assert "def part_1" in (quest / "solution.py").read_text()
 
 
+def test_pull_preserves_existing_quest_files_without_force(tmp_path, monkeypatch):
+    quest = tmp_path / "events/2025/quest_01"
+    (quest / "input").mkdir(parents=True)
+    (quest / "test").mkdir()
+    (quest / "solution.py").write_text("existing solution")
+    (quest / "input/input_p1.txt").write_text("existing input")
+    (quest / "test/test_p1.txt").write_text("existing test")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(utils, "has_token", lambda: True)
+    monkeypatch.setattr(utils, "download_input", lambda target: {"1": "new input"})
+
+    result = runner.invoke(app, ["pull", "1", "--year", "2025"])
+
+    assert result.exit_code == 0, result.output
+    assert (quest / "solution.py").read_text() == "existing solution"
+    assert (quest / "input/input_p1.txt").read_text() == "existing input"
+    assert (quest / "test/test_p1.txt").read_text() == "existing test"
+    assert result.output.count("already exists") == 3
+
+
 def test_pull_story_uses_story_directory_and_api_identifier(tmp_path, monkeypatch):
     targets = []
     monkeypatch.setattr(utils, "has_token", lambda: True)
@@ -299,6 +363,23 @@ def test_execute_commands_use_expected_data(
     assert expected in result.output
 
 
+@pytest.mark.parametrize(
+    ("command", "message"), [("run", "execute"), ("test", "run test")]
+)
+def test_execute_commands_report_missing_files_without_traceback(
+    tmp_path, monkeypatch, command, message
+):
+    (tmp_path / "events").mkdir()
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, [command, "1", "--year", "2025"])
+
+    assert result.exit_code == 1
+    assert f"Failed to {message}" in result.output
+    assert "Missing solution file" in result.output
+    assert "Traceback" not in result.output
+
+
 def test_pull_reports_adapter_error_without_traceback(tmp_path, monkeypatch):
     monkeypatch.setattr(utils, "has_token", lambda: True)
 
@@ -320,6 +401,36 @@ def test_push_reports_incorrect_answer(tmp_path, monkeypatch):
 
     assert result.exit_code == 0, result.output
     assert "Incorrect answer" in result.stdout
+
+
+def test_push_without_token_never_submits(tmp_path, monkeypatch):
+    monkeypatch.setattr(utils, "has_token", lambda: False)
+    monkeypatch.setattr(
+        utils,
+        "push_solution",
+        lambda *args: pytest.fail("submission adapter must not be called"),
+    )
+
+    result = invoke_in_workspace(tmp_path, monkeypatch, ["push", "1", "--year", "2025"])
+
+    assert result.exit_code == 1
+    assert "Session token not found" in result.output
+
+
+def test_push_reports_submission_error_without_traceback(tmp_path, monkeypatch):
+    monkeypatch.setattr(utils, "has_token", lambda: True)
+
+    def fail_submission(*args):
+        raise RuntimeError("service unavailable")
+
+    monkeypatch.setattr(utils, "push_solution", fail_submission)
+
+    result = invoke_in_workspace(tmp_path, monkeypatch, ["push", "1", "--year", "2025"])
+
+    assert result.exit_code == 1
+    assert "Failed to submit solution" in result.output
+    assert "service unavailable" in result.output
+    assert "Traceback" not in result.output
 
 
 def test_push_correct_answer_downloads_next_part(tmp_path, monkeypatch):
@@ -347,3 +458,58 @@ def test_push_correct_answer_downloads_next_part(tmp_path, monkeypatch):
     quest = tmp_path / "events/2025/quest_01"
     assert (quest / "input/input_p2.txt").read_text() == "next-part"
     assert (quest / "test/test_p2.txt").is_file()
+
+
+def test_push_reports_error_downloading_next_part(tmp_path, monkeypatch):
+    monkeypatch.setattr(utils, "has_token", lambda: True)
+    monkeypatch.setattr(
+        utils,
+        "push_solution",
+        lambda *args: {
+            "correct": True,
+            "globalPlace": 1,
+            "globalScore": 100,
+            "globalTime": 1000,
+            "localTime": 2000,
+        },
+    )
+
+    def fail_download(target):
+        raise RuntimeError("download unavailable")
+
+    monkeypatch.setattr(utils, "download_input", fail_download)
+
+    result = invoke_in_workspace(tmp_path, monkeypatch, ["push", "1", "--year", "2025"])
+
+    assert result.exit_code == 1
+    assert "Failed to fetch input: download unavailable" in result.output
+    assert "Traceback" not in result.output
+
+
+def test_push_part_three_does_not_download_another_part(tmp_path, monkeypatch):
+    monkeypatch.setattr(utils, "has_token", lambda: True)
+    monkeypatch.setattr(
+        utils,
+        "push_solution",
+        lambda *args: {
+            "correct": True,
+            "globalPlace": 1,
+            "globalScore": 100,
+            "globalTime": 1000,
+            "localTime": 2000,
+        },
+    )
+    monkeypatch.setattr(
+        utils,
+        "download_input",
+        lambda target: pytest.fail("part 4 must not be downloaded"),
+    )
+
+    result = invoke_in_workspace(
+        tmp_path,
+        monkeypatch,
+        ["push", "1", "--year", "2025", "--part", "3"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Correct answer" in result.output

@@ -158,7 +158,10 @@ def test_push_hides_solution_debug_but_preserves_library_output(
         def json():
             return {"correct": True}
 
+    submissions = []
+
     def submit(**kwargs):
+        submissions.append(kwargs)
         print("library stdout")
         print("library stderr", file=sys.stderr)
         return Response()
@@ -169,6 +172,15 @@ def test_push_hides_solution_debug_but_preserves_library_output(
     captured = capsys.readouterr()
     assert captured.out == "library stdout\n"
     assert captured.err == "library stderr\n"
+    assert submissions == [
+        {
+            "quest": 1,
+            "event": 2025,
+            "part": 1,
+            "answer": "42",
+            "quiet": True,
+        }
+    ]
 
 
 def test_challenge_target_builds_category_paths():
