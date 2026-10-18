@@ -24,10 +24,3 @@
 * remove short version option ([80a7f59](https://github.com/pablofueros/python-ecd/commit/80a7f5930e92b573fa40e533287a48f7bf100dd0))
 * use full challenge totals for progress ([82d62e8](https://github.com/pablofueros/python-ecd/commit/82d62e8adb5359259359eddfa34165957f92dad8))
 * warn about legacy env tokens ([3a62726](https://github.com/pablofueros/python-ecd/commit/3a627269517155c0e3c8e4e12723d35670826e26))
-
-## Changelog
-
-All notable changes to this project will be documented in this file.
-
-This changelog is maintained automatically by Release Please from Conventional
-Commits. Existing releases up to 0.2.4 predate this changelog.
