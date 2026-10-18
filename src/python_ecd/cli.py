@@ -14,6 +14,8 @@ progress_app = typer.Typer(help="Show or synchronize accepted puzzle parts.")
 app.add_typer(token_app, name="token")
 app.add_typer(progress_app, name="progress")
 
+TOTAL_QUESTS = {"events": 20, "stories": 3}
+
 
 def _resolve_target(quest: int, year: int | None, story: int | None) -> ChallengeTarget:
     if (year is None) == (story is None):
@@ -406,9 +408,10 @@ def _display_progress(progress: utils.Progress, targets: list[ChallengeTarget]) 
             completed_parts = sum(
                 len(recorded.get(quest, [])) for quest in quest_numbers
             )
-            total_parts = len(quest_numbers) * 3
+            total_quests = TOTAL_QUESTS[collection]
+            total_parts = total_quests * 3
             typer.echo(
-                f"  {edition}: {completed_quests}/{len(quest_numbers)} quests complete, "
+                f"  {edition}: {completed_quests}/{total_quests} quests complete, "
                 f"{completed_parts}/{total_parts} parts complete"
             )
 

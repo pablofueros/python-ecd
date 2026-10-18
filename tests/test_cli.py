@@ -1,4 +1,5 @@
 from importlib.metadata import version
+from typing import Literal, cast
 
 import pytest
 from typer.testing import CliRunner
@@ -597,8 +598,34 @@ def test_progress_summarizes_events_and_stories(tmp_path, monkeypatch):
     result = runner.invoke(app, ["progress"])
 
     assert result.exit_code == 0, result.output
-    assert "2025: 0/1 quests complete, 1/3 parts complete" in result.output
-    assert "3: 1/1 quests complete, 3/3 parts complete" in result.output
+    assert "2025: 0/20 quests complete, 1/60 parts complete" in result.output
+    assert "3: 1/3 quests complete, 3/9 parts complete" in result.output
+
+
+def test_progress_uses_event_totals_instead_of_local_quest_count(tmp_path, monkeypatch):
+    utils.create_workspace_state(tmp_path)
+    completed_parts = {
+        1: (1, 2, 3),
+        2: (1, 2, 3),
+        3: (1, 2, 3),
+        4: (1, 2, 3),
+        5: (1, 2),
+        6: (1, 2, 3),
+        7: (1, 2),
+        8: (1,),
+    }
+    for quest in range(1, 11):
+        (tmp_path / f"events/2025/quest_{quest:02d}").mkdir(parents=True)
+    for quest, parts in completed_parts.items():
+        target = utils.ChallengeTarget(category="event", edition=2025, quest=quest)
+        for part in parts:
+            utils.record_completed_part(tmp_path, target, cast(Literal[1, 2, 3], part))
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["progress"])
+
+    assert result.exit_code == 0, result.output
+    assert "2025: 5/20 quests complete, 20/60 parts complete" in result.output
 
 
 def test_progress_sync_updates_local_quests_without_exposing_answers(
@@ -630,8 +657,8 @@ def test_progress_sync_updates_local_quests_without_exposing_answers(
     assert "Synchronized progress for 3 quests" in result.output
     assert "\033" not in result.output
     assert "answer" not in result.output
-    assert "2024: 1/2 quests complete, 3/6 parts complete" in result.output
-    assert "3: 1/1 quests complete, 3/3 parts complete" in result.output
+    assert "2024: 1/20 quests complete, 3/60 parts complete" in result.output
+    assert "3: 1/3 quests complete, 3/9 parts complete" in result.output
     assert (tmp_path / ".ecd.toml").read_text() == (
         "schema_version = 1\n"
         '\n[events."2024"]\n'

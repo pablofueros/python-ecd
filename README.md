@@ -180,7 +180,9 @@ ecd progress sync  # Synchronize local quests with Everybody Codes
 
 Only successful submissions made after `.ecd.toml` was created are included.
 Use `ecd progress sync` to retrieve earlier progress for quests already present
-in the workspace. Accepted answers are never displayed or stored locally.
+in the workspace. Progress totals cover the complete challenge (20 quests for an
+event and 3 for a story), regardless of how many quest directories exist locally.
+Accepted answers are never displayed or stored locally.
 
 ### Display Version
 
