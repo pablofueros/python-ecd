@@ -37,7 +37,7 @@ def test_init_creates_workspace_from_packaged_templates(tmp_path, monkeypatch):
     assert not (workspace / "events").exists()
     assert not (workspace / "stories").exists()
     assert (workspace / ".ecd.toml").read_text() == "schema_version = 1\n"
-    assert ".env" in (workspace / ".gitignore").read_text()
+    assert ".env" not in (workspace / ".gitignore").read_text()
     assert "Everybody Codes Solutions" in (workspace / "README.md").read_text()
     assert not (workspace / ".env").exists()
 
