@@ -17,6 +17,9 @@ Event quests are stored under `events/<year>/quest_<id>/`; story quests use
 | `input/` | Puzzle inputs (`input_p1.txt`, …) fetched automatically. |
 | `test/` | Optional test files (`test_p1.txt`, …) for local validation. |
 
+The `.ecd.toml` file identifies the workspace and records parts accepted by
+Everybody Codes. Category directories are created on demand by `ecd pull`.
+
 ---
 
 ## 🚀 Usage
@@ -42,6 +45,9 @@ ecd run <QUEST_NUMBER> --year <EVENT_YEAR> --part=<N>
 
 # Submit your answer for a given part
 ecd push <QUEST_NUMBER> --year <EVENT_YEAR> --part=<N>
+
+# Show accepted quests and parts
+ecd progress
 ```
 
 Use exactly one of `--year` or `--story` with `pull`, `test`, `run`, and `push`.

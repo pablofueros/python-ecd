@@ -22,6 +22,7 @@ def write_solution(base_dir: Path, source: str, mode: str = "input") -> None:
 def test_find_base_walks_up_from_nested_directory(tmp_path, monkeypatch):
     nested = tmp_path / "events/2025/quest_01"
     nested.mkdir(parents=True)
+    utils.create_workspace_state(tmp_path)
     monkeypatch.chdir(nested)
 
     assert utils.find_base() == tmp_path
@@ -34,12 +35,32 @@ def test_find_base_fails_outside_workspace(tmp_path, monkeypatch):
         utils.find_base()
 
 
-def test_find_base_recognizes_story_only_workspace(tmp_path, monkeypatch):
+def test_find_base_requires_migration_for_legacy_workspace(tmp_path, monkeypatch):
     nested = tmp_path / "stories/3/quest_01"
     nested.mkdir(parents=True)
     monkeypatch.chdir(nested)
 
-    assert utils.find_base() == tmp_path
+    with pytest.raises(utils.WorkspaceMigrationRequired, match="ecd init"):
+        utils.find_base()
+
+
+def test_record_completed_part_writes_sorted_progress_without_duplicates(tmp_path):
+    utils.create_workspace_state(tmp_path)
+    story = ChallengeTarget(category="story", edition=3, quest=2)
+    event = ChallengeTarget(category="event", edition=2025, quest=1)
+
+    utils.record_completed_part(tmp_path, story, 2)
+    utils.record_completed_part(tmp_path, event, 3)
+    utils.record_completed_part(tmp_path, event, 1)
+    utils.record_completed_part(tmp_path, event, 1)
+
+    assert (tmp_path / ".ecd.toml").read_text() == (
+        "schema_version = 1\n"
+        '\n[events."2025"]\n'
+        "quest_01 = [1, 3]\n"
+        '\n[stories."3"]\n'
+        "quest_02 = [2]\n"
+    )
 
 
 def test_set_token_creates_private_global_file(tmp_path, monkeypatch):

@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Literal
 
 import typer
@@ -28,6 +29,17 @@ def _display_version(value: bool) -> None:
         raise typer.Exit()
 
 
+def _find_base() -> Path:
+    try:
+        return utils.find_base()
+    except utils.WorkspaceMigrationRequired as error:
+        typer.echo(f"⚠️ {error}")
+        raise typer.Exit(1)
+    except FileNotFoundError as error:
+        typer.echo(f"❌ {error}")
+        raise typer.Exit(1)
+
+
 @app.callback()
 def main(
     version: bool = typer.Option(
@@ -51,9 +63,18 @@ def init_cmd(
     # 0. Parse inputs
     base_dir_name = "." if path is None else path
 
-    # 1. Create base directory
+    # 1. Create or migrate the base directory
     base_dir = utils.create_base(base_dir_name)
+    if utils.is_legacy_workspace(base_dir):
+        utils.create_workspace_state(base_dir)
+        typer.echo(f"🧭 {utils.WORKSPACE_FILE} created")
+        return
+
+    state_existed = (base_dir / utils.WORKSPACE_FILE).exists()
+    utils.create_workspace_state(base_dir)
     typer.echo(f"📁 Created workspace at: {base_dir}")
+    if not state_existed:
+        typer.echo(f"🧭 {utils.WORKSPACE_FILE} created")
 
     # 2. Initialize git repository
     git_dir = base_dir / ".git"
@@ -159,7 +180,7 @@ def pull_cmd(
 
     # 0. Resolve challenge and locate base directory
     target = _resolve_target(quest, year, story)
-    base_dir = utils.find_base()
+    base_dir = _find_base()
 
     # 1. Ensure session token exists
     if not utils.has_token():
@@ -224,7 +245,7 @@ def run_cmd(
 
     # 0. Resolve challenge and locate base directory
     target = _resolve_target(quest, year, story)
-    base_dir = utils.find_base()
+    base_dir = _find_base()
 
     # 1. Execute the solution
     try:
@@ -249,7 +270,7 @@ def test_cmd(
 
     # 0. Resolve challenge and locate base directory
     target = _resolve_target(quest, year, story)
-    base_dir = utils.find_base()
+    base_dir = _find_base()
 
     # 1. Execute the solution in test mode
     try:
@@ -274,7 +295,7 @@ def push_cmd(
 
     # 0. Resolve challenge and locate base directory
     target = _resolve_target(quest, year, story)
-    base_dir = utils.find_base()
+    base_dir = _find_base()
 
     # Ensure session token exists
     if not utils.has_token():
@@ -291,6 +312,11 @@ def push_cmd(
         raise typer.Exit(1)
 
     if result.get("correct"):
+        try:
+            utils.record_completed_part(base_dir, target, part)
+        except Exception as e:
+            typer.echo(f"❌ Answer accepted, but progress could not be saved: {e}")
+            raise typer.Exit(1)
         typer.echo(
             f"✅ Correct answer for {target.label} Part {part}!"
             f"\n - Global place: {result.get('globalPlace', '?')}"
@@ -340,6 +366,34 @@ def push_cmd(
             f"\n - lengthCorrect={result.get('lengthCorrect')}, "
             f"\n - firstCorrect={result.get('firstCorrect')}"
         )
+
+
+@app.command("progress")
+def progress_cmd() -> None:
+    """Show accepted parts recorded in the workspace."""
+    base_dir = _find_base()
+    try:
+        progress = utils.load_progress(base_dir)
+    except Exception as e:
+        typer.echo(f"❌ Failed to read progress: {e}")
+        raise typer.Exit(1)
+
+    if not any(progress[collection] for collection in ("events", "stories")):
+        typer.echo("ℹ️ No completed parts recorded yet.")
+        return
+
+    for collection, heading in (("events", "Events"), ("stories", "Stories")):
+        if not progress[collection]:
+            continue
+        typer.echo(heading)
+        for edition, quests in sorted(progress[collection].items()):
+            completed_quests = sum(parts == [1, 2, 3] for parts in quests.values())
+            completed_parts = sum(len(parts) for parts in quests.values())
+            total_parts = len(quests) * 3
+            typer.echo(
+                f"  {edition}: {completed_quests}/{len(quests)} quests complete, "
+                f"{completed_parts}/{total_parts} parts complete"
+            )
 
 
 if __name__ == "__main__":

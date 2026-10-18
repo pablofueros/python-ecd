@@ -11,7 +11,7 @@ runner = CliRunner()
 
 def invoke_in_workspace(tmp_path, monkeypatch, arguments):
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "events").mkdir()
+    utils.create_workspace_state(tmp_path)
     return runner.invoke(app, arguments)
 
 
@@ -34,8 +34,9 @@ def test_init_creates_workspace_from_packaged_templates(tmp_path, monkeypatch):
 
     assert result.exit_code == 0, result.output
     workspace = tmp_path / "workspace"
-    assert (workspace / "events").is_dir()
-    assert (workspace / "stories").is_dir()
+    assert not (workspace / "events").exists()
+    assert not (workspace / "stories").exists()
+    assert (workspace / ".ecd.toml").read_text() == "schema_version = 1\n"
     assert ".env" in (workspace / ".gitignore").read_text()
     assert "Everybody Codes Solutions" in (workspace / "README.md").read_text()
     assert not (workspace / ".env").exists()
@@ -69,6 +70,28 @@ def test_init_preserves_existing_files_without_force(tmp_path, monkeypatch):
     assert (workspace / ".gitignore").read_text() == "old-ignore"
     assert (workspace / "README.md").read_text() == "old-readme"
     assert (workspace / ".env").read_text() == "ECD_TOKEN=old-token\n"
+
+
+def test_init_migrates_legacy_workspace_without_changing_other_files(
+    tmp_path, monkeypatch
+):
+    workspace = tmp_path / "workspace"
+    (workspace / "events/2024").mkdir(parents=True)
+    (workspace / "README.md").write_text("custom-readme")
+    monkeypatch.chdir(workspace)
+    monkeypatch.setattr(
+        utils,
+        "create_git",
+        lambda path: pytest.fail("migration must not initialize Git"),
+    )
+
+    result = runner.invoke(app, ["init"])
+
+    assert result.exit_code == 0, result.output
+    assert result.output == "🧭 .ecd.toml created\n"
+    assert (workspace / ".ecd.toml").read_text() == "schema_version = 1\n"
+    assert (workspace / "README.md").read_text() == "custom-readme"
+    assert not (workspace / ".gitignore").exists()
 
 
 def test_init_force_overwrites_templates(tmp_path, monkeypatch):
@@ -278,6 +301,7 @@ def test_pull_from_nested_directory_reads_global_token(tmp_path, monkeypatch):
     workspace = tmp_path / "workspace"
     nested = workspace / "events/2025"
     nested.mkdir(parents=True)
+    utils.create_workspace_state(workspace)
     token_path = tmp_path / "config/ecd/token"
     token_path.parent.mkdir(parents=True)
     token_path.write_text("global-token\n")
@@ -312,6 +336,7 @@ def test_pull_preserves_existing_quest_files_without_force(tmp_path, monkeypatch
     (quest / "solution.py").write_text("existing solution")
     (quest / "input/input_p1.txt").write_text("existing input")
     (quest / "test/test_p1.txt").write_text("existing test")
+    utils.create_workspace_state(tmp_path)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(utils, "has_token", lambda: True)
     monkeypatch.setattr(utils, "download_input", lambda target: {"1": "new input"})
@@ -359,6 +384,7 @@ def test_execute_commands_use_expected_data(
     (quest / mode).mkdir(parents=True)
     (quest / "solution.py").write_text("def part_1(data):\n    return data.upper()\n")
     (quest / mode / f"{mode}_p1.txt").write_text("abc")
+    utils.create_workspace_state(tmp_path)
     monkeypatch.chdir(tmp_path)
 
     result = runner.invoke(app, [command, "1", "--year", "2025"])
@@ -373,7 +399,7 @@ def test_execute_commands_use_expected_data(
 def test_execute_commands_report_missing_files_without_traceback(
     tmp_path, monkeypatch, command, message
 ):
-    (tmp_path / "events").mkdir()
+    utils.create_workspace_state(tmp_path)
     monkeypatch.chdir(tmp_path)
 
     result = runner.invoke(app, [command, "1", "--year", "2025"])
@@ -462,6 +488,7 @@ def test_push_correct_answer_downloads_next_part(tmp_path, monkeypatch):
     quest = tmp_path / "events/2025/quest_01"
     assert (quest / "input/input_p2.txt").read_text() == "next-part"
     assert (quest / "test/test_p2.txt").is_file()
+    assert "quest_01 = [1]" in (tmp_path / ".ecd.toml").read_text()
 
 
 def test_push_reports_error_downloading_next_part(tmp_path, monkeypatch):
@@ -517,3 +544,35 @@ def test_push_part_three_does_not_download_another_part(tmp_path, monkeypatch):
 
     assert result.exit_code == 0, result.output
     assert "Correct answer" in result.output
+    assert "quest_01 = [3]" in (tmp_path / ".ecd.toml").read_text()
+
+
+def test_legacy_workspace_requires_init_migration(tmp_path, monkeypatch):
+    (tmp_path / "events").mkdir()
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["progress"])
+
+    assert result.exit_code == 1
+    assert "Legacy workspace detected" in result.output
+    assert "ecd init" in result.output
+
+
+def test_progress_summarizes_events_and_stories(tmp_path, monkeypatch):
+    utils.create_workspace_state(tmp_path)
+    utils.record_completed_part(
+        tmp_path, utils.ChallengeTarget(category="event", edition=2025, quest=1), 1
+    )
+    for part in (1, 2, 3):
+        utils.record_completed_part(
+            tmp_path,
+            utils.ChallengeTarget(category="story", edition=3, quest=2),
+            part,
+        )
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["progress"])
+
+    assert result.exit_code == 0, result.output
+    assert "2025: 0/1 quests complete, 1/3 parts complete" in result.output
+    assert "3: 1/1 quests complete, 3/3 parts complete" in result.output

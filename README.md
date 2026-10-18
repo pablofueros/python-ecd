@@ -29,6 +29,7 @@ This tool relies on the [Everybody Codes Data](https://github.com/wimglenn/every
 - Configure authentication without exposing session tokens in shell history
 - Run solutions with both test and real input data
 - Submit solutions and check if they are correct
+- Track accepted puzzle parts in the workspace
 
 ## 📦 Installation
 
@@ -64,7 +65,20 @@ Or in a specified path:
 ecd init everybody-codes-solutions
 ```
 
-Note that if the directory does not exist, it will be created.
+If the directory does not exist, it will be created. Initialization adds an
+`.ecd.toml` file that identifies the workspace and stores accepted puzzle parts.
+The `events/` and `stories/` directories are created later, when `ecd pull`
+needs them.
+
+To migrate a workspace created with an earlier version, run this command from
+its root:
+
+```bash
+ecd init
+```
+
+Migration only creates `.ecd.toml`; existing workspace files are preserved.
+Other commands will show this instruction until the workspace is migrated.
 
 Options:
 - `--force`, `-f`: Overwrite existing files
@@ -151,7 +165,19 @@ Options:
 - `--story`, `-s`: Story number (mutually exclusive with `--year`)
 - `--part`, `-p`: Part number to submit (default: 1)
 
-Note that next available part (if exists) will be pulled automatically if the result is correct.
+When the answer is correct, the accepted part is recorded in `.ecd.toml` and
+the next available part (if any) is pulled automatically.
+
+### Show Progress
+
+Display the accepted quests and parts recorded in the current workspace:
+
+```bash
+ecd progress
+```
+
+Only successful submissions made after `.ecd.toml` was created are included.
+Progress completed with an earlier version is not inferred from solution files.
 
 ### Display Version
 

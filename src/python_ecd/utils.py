@@ -4,12 +4,21 @@ import io
 import os
 import stat
 import subprocess
+import tempfile
+import tomllib
 import urllib.request
 from datetime import timedelta
 from pathlib import Path
 from typing import Literal
 
 from .target import ChallengeTarget
+
+WORKSPACE_FILE = ".ecd.toml"
+WORKSPACE_SCHEMA_VERSION = 1
+
+
+class WorkspaceMigrationRequired(FileNotFoundError):
+    """Raised when a legacy workspace needs an .ecd.toml file."""
 
 
 def _read_template(template_name: str) -> str:
@@ -24,12 +33,28 @@ def _read_template(template_name: str) -> str:
 
 def create_base(base_dir_name: str) -> Path:
     """
-    Create the base directory for the project, including subfolders.
+    Create the base directory for the project.
     """
     base_dir = Path(base_dir_name).resolve()
-    (base_dir / "events").mkdir(parents=True, exist_ok=True)
-    (base_dir / "stories").mkdir(parents=True, exist_ok=True)
+    base_dir.mkdir(parents=True, exist_ok=True)
     return base_dir
+
+
+def is_legacy_workspace(base_dir: Path) -> bool:
+    """Return whether a directory looks like a workspace without its state file."""
+    return not (base_dir / WORKSPACE_FILE).is_file() and (
+        (base_dir / "events").is_dir() or (base_dir / "stories").is_dir()
+    )
+
+
+def create_workspace_state(base_dir: Path) -> Path:
+    """Create an empty workspace state file without replacing existing progress."""
+    state_path = base_dir / WORKSPACE_FILE
+    if not state_path.exists():
+        state_path.write_text(
+            f"schema_version = {WORKSPACE_SCHEMA_VERSION}\n", encoding="utf-8"
+        )
+    return state_path
 
 
 def find_base() -> Path:
@@ -38,9 +63,85 @@ def find_base() -> Path:
     """
     current_dir = Path.cwd()
     for parent in [current_dir] + list(current_dir.parents):
-        if (parent / "events").is_dir() or (parent / "stories").is_dir():
+        if (parent / WORKSPACE_FILE).is_file():
             return parent
+        if is_legacy_workspace(parent):
+            raise WorkspaceMigrationRequired(
+                "Legacy workspace detected: .ecd.toml is missing. "
+                "Run 'ecd init' from the workspace root to migrate it."
+            )
     raise FileNotFoundError("Base directory not found. Please run 'ecd init'.")
+
+
+def load_progress(base_dir: Path) -> dict[str, dict[int, dict[int, list[int]]]]:
+    """Load completed parts grouped by category, edition, and quest."""
+    state_path = base_dir / WORKSPACE_FILE
+    with state_path.open("rb") as state_file:
+        state = tomllib.load(state_file)
+    if state.get("schema_version") != WORKSPACE_SCHEMA_VERSION:
+        raise ValueError(
+            f"Unsupported workspace schema in {WORKSPACE_FILE}: "
+            f"{state.get('schema_version')!r}"
+        )
+
+    progress: dict[str, dict[int, dict[int, list[int]]]] = {
+        "events": {},
+        "stories": {},
+    }
+    for collection, editions in progress.items():
+        raw_editions = state.get(collection, {})
+        if not isinstance(raw_editions, dict):
+            raise TypeError(f"Invalid [{collection}] data in {WORKSPACE_FILE}.")
+        for edition_key, raw_quests in raw_editions.items():
+            if not isinstance(raw_quests, dict):
+                raise TypeError(f"Invalid {collection}.{edition_key} data.")
+            edition = int(edition_key)
+            quests: dict[int, list[int]] = {}
+            for quest_key, raw_parts in raw_quests.items():
+                if not quest_key.startswith("quest_") or not isinstance(
+                    raw_parts, list
+                ):
+                    raise ValueError(f"Invalid progress entry: {quest_key}.")
+                quest = int(quest_key.removeprefix("quest_"))
+                parts = sorted({int(part) for part in raw_parts})
+                if any(part not in (1, 2, 3) for part in parts):
+                    raise ValueError(f"Invalid completed part in {quest_key}.")
+                quests[quest] = parts
+            editions[edition] = quests
+    return progress
+
+
+def _serialize_progress(
+    progress: dict[str, dict[int, dict[int, list[int]]]],
+) -> str:
+    lines = [f"schema_version = {WORKSPACE_SCHEMA_VERSION}"]
+    for collection in ("events", "stories"):
+        for edition in sorted(progress[collection]):
+            lines.extend(("", f'[{collection}."{edition}"]'))
+            for quest in sorted(progress[collection][edition]):
+                parts = sorted(set(progress[collection][edition][quest]))
+                values = ", ".join(str(part) for part in parts)
+                lines.append(f"quest_{quest:02d} = [{values}]")
+    return "\n".join(lines) + "\n"
+
+
+def record_completed_part(
+    base_dir: Path, target: ChallengeTarget, part: Literal[1, 2, 3]
+) -> None:
+    """Record an accepted part and atomically update the workspace state."""
+    progress = load_progress(base_dir)
+    collection = "events" if target.category == "event" else "stories"
+    quests = progress[collection].setdefault(target.edition, {})
+    completed_parts = quests.setdefault(target.quest, [])
+    completed_parts.append(part)
+
+    state_path = base_dir / WORKSPACE_FILE
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", dir=base_dir, prefix=".ecd.", delete=False
+    ) as temporary_file:
+        temporary_path = Path(temporary_file.name)
+        temporary_file.write(_serialize_progress(progress))
+    temporary_path.replace(state_path)
 
 
 def create_quest_dir(base_dir: Path, target: ChallengeTarget) -> Path:
