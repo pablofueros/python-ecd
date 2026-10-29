@@ -4,7 +4,7 @@
 
 ---
 
-### **✨ A Python CLI tool for managing Everybody Codes puzzles ✨**
+### **✨ A Python CLI tool for managing Everybody Codes puzzles Data ✨**
 
 [![Code Quality](https://github.com/pablofueros/python-ecd/actions/workflows/code-quality.yml/badge.svg)](https://github.com/pablofueros/python-ecd/actions/workflows/code-quality.yml)
 [![Coverage](https://codecov.io/gh/pablofueros/python-ecd/graph/badge.svg?branch=main)](https://codecov.io/gh/pablofueros/python-ecd)
@@ -36,7 +36,7 @@ This tool relies on the [Everybody Codes Data](https://github.com/wimglenn/every
 The package can be installed using [uv](https://docs.astral.sh/uv/#installation), which is recommended for better dependency management and faster installations:
 
 ```bash
-# Install it as a system tool
+# Install it as a persistent tool
 uv tool install python-ecd
 
 # Otherwise use:
@@ -51,7 +51,7 @@ The tool requires Python 3.13 or newer and is available as both `python-ecd` and
 
 ### Initialize a Workspace
 
-Create a new workspace for your puzzles solutions:
+Create a new workspace for your puzzle solutions:
 
 It can be done in the current directory:
 
@@ -82,7 +82,7 @@ Other commands will show this instruction until the workspace is migrated.
 
 Options:
 - `--force`, `-f`: Overwrite existing files
-- `--no-git`: Do not initialize a Git repository (useful inside an existing repository or development pourposes)
+- `--no-git`: Do not initialize a Git repository (useful inside an existing repository or development purposes)
 
 ### Set Session Token
 

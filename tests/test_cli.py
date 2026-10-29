@@ -455,7 +455,11 @@ def test_push_reports_incorrect_answer(tmp_path, monkeypatch):
     result = invoke_in_workspace(tmp_path, monkeypatch, ["push", "1", "--year", "2025"])
 
     assert result.exit_code == 0, result.output
-    assert "Incorrect answer" in result.stdout
+    assert result.stdout == (
+        "❌ Incorrect answer for Event 2025 Quest 1 Part 1:\n"
+        "- lengthCorrect=None\n"
+        "- firstCorrect=None\n"
+    )
 
 
 def test_push_without_token_never_submits(tmp_path, monkeypatch):
@@ -514,6 +518,13 @@ def test_push_correct_answer_downloads_next_part(tmp_path, monkeypatch):
     assert (quest / "input/input_p2.txt").read_text() == "next-part"
     assert (quest / "test/test_p2.txt").is_file()
     assert "quest_01 = [1]" in (tmp_path / ".ecd.toml").read_text()
+    assert result.output.startswith(
+        "✅ Correct answer for Event 2025 Quest 1 Part 1!\n"
+        "- Global place: 1\n"
+        "- Global score: 100\n"
+        "- Global time: 1s\n"
+        "- Local time: 2s\n\n"
+    )
 
 
 def test_push_reports_error_downloading_next_part(tmp_path, monkeypatch):

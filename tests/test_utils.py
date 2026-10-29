@@ -211,6 +211,8 @@ def test_push_hides_solution_debug_but_preserves_library_output(
     quest_dir.mkdir(parents=True)
     (quest_dir / "solution.py").write_text(
         "import sys\n"
+        "print('module stdout')\n"
+        "print('module stderr', file=sys.stderr)\n"
         "def part_1(data):\n"
         "    print('solution stdout')\n"
         "    print('solution stderr', file=sys.stderr)\n"

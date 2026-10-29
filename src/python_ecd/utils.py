@@ -411,7 +411,11 @@ def push_solution(
             f"Could not load module from {solution_path.relative_to(base_dir)}"
         )
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    with (
+        contextlib.redirect_stdout(io.StringIO()),
+        contextlib.redirect_stderr(io.StringIO()),
+    ):
+        spec.loader.exec_module(module)
 
     func_name = f"part_{part}"
     func = getattr(module, func_name, None)

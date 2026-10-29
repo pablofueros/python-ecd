@@ -3,6 +3,7 @@ name = "python-ecd"
 version = "0.3.0"
 description = "Python CLI for Everybody Codes"
 readme = "README.md"
+classifiers = ["Programming Language :: Python :: 3.13"]
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Pablo Garcia", email = "pablofueros@gmail.com" }]
