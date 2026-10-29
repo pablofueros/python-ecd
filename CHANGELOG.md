@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.1](https://github.com/pablofueros/python-ecd/compare/0.3.0...0.3.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* compact README banner ([2cc571b](https://github.com/pablofueros/python-ecd/commit/2cc571b4fd6a450b77bde37a9586610d66f1410e))
+* normalize CLI output formatting ([be05e09](https://github.com/pablofueros/python-ecd/commit/be05e095e7ee039271fd59280f33ab72701e3f2f))
+* restore Python classifier and polish README ([ac15516](https://github.com/pablofueros/python-ecd/commit/ac15516f43ab56471985f3f1ac36c9be0ce6aed8))
+
 ## [0.3.0](https://github.com/pablofueros/python-ecd/compare/0.2.4...0.3.0) (2026-10-18)
 
 
